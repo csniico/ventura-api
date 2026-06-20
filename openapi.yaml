@@ -1,0 +1,3067 @@
+openapi: 3.0.0
+paths:
+  /:
+    get:
+      operationId: AppController_getHello
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags:
+        - App
+  /users/email:
+    post:
+      operationId: UserController_createWithEmail
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserWithEmailDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Sign up with email (no password yet)
+      tags: &a1
+        - Users
+  /users/google:
+    post:
+      operationId: UserController_createWithGoogle
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserWithGoogleDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Sign up / continue with Google
+      tags: *a1
+  /users/link-google:
+    post:
+      operationId: UserController_linkGoogleAccount
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkGoogleAccountDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Link a Google account to an existing user
+      tags: *a1
+  /users/password:
+    post:
+      operationId: UserController_createPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePasswordDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Set a password for a user that has none
+      tags: *a1
+    put:
+      operationId: UserController_updatePassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePasswordDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Change an existing password
+      tags: *a1
+  /users/{id}/has-password:
+    get:
+      operationId: UserController_hasPassword
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HasPasswordResponse"
+      summary: Check whether a user has a password set
+      tags: *a1
+  /users/{id}:
+    get:
+      operationId: UserController_getUserById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Get a user by id
+      tags: *a1
+    delete:
+      operationId: UserController_deleteAccount
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Soft-delete the account
+      tags: *a1
+  /users/{id}/profile:
+    patch:
+      operationId: UserController_updateProfile
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Bulk update profile fields
+      tags: *a1
+  /users/{id}/first-name:
+    patch:
+      operationId: UserController_updateFirstName
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFirstNameDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Update first name
+      tags: *a1
+  /users/{id}/last-name:
+    patch:
+      operationId: UserController_updateLastName
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLastNameDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Update last name (null to clear)
+      tags: *a1
+  /users/{id}/email:
+    post:
+      operationId: UserController_requestEmailChange
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestEmailChangeDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      summary: Request an email change (sends a code to the new email)
+      tags: *a1
+  /users/{id}/email/confirm:
+    post:
+      operationId: UserController_confirmEmailChange
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmEmailChangeDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Confirm an email change with the emailed code
+      tags: *a1
+  /users/{id}/avatar:
+    patch:
+      operationId: UserController_updateAvatar
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAvatarDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Update avatar (url + key from file upload)
+      tags: *a1
+  /users/{id}/business:
+    patch:
+      operationId: UserController_setBusinessId
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetBusinessIdDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+      summary: Attach a business to the user
+      tags: *a1
+  /files/presign:
+    post:
+      operationId: FileStorageController_presign
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresignUploadDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignedUploadResponse"
+      summary: Request a presigned upload URL
+      tags: &a2
+        - Files
+  /files:
+    delete:
+      operationId: FileStorageController_delete
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteFileDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteFileResponse"
+      summary: Delete a stored file by its key
+      tags: *a2
+  /admin/profile:
+    post:
+      operationId: AdminProfileController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdminDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+      summary: Create an admin (returns existing if email exists)
+      tags: &a3
+        - Admin
+  /admin/profile/{id}:
+    get:
+      operationId: AdminProfileController_getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+      summary: Get an admin profile by id
+      tags: *a3
+    patch:
+      operationId: AdminProfileController_updateProfile
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAdminProfileDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+      summary: Update an admin profile
+      tags: *a3
+  /admin/users:
+    get:
+      operationId: AdminManageUsersController_listUsers
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+      summary: List all users (admin-only)
+      tags: &a4
+        - Admin
+  /admin/users/{id}:
+    get:
+      operationId: AdminManageUsersController_getUserById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+      summary: Get a single user by id
+      tags: *a4
+    delete:
+      operationId: AdminManageUsersController_softDeleteUser
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+      summary: Soft-delete a user (sets deleted=true)
+      tags: *a4
+  /admin/users/{id}/restore:
+    post:
+      operationId: AdminManageUsersController_restoreUser
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+      summary: Restore a soft-deleted user
+      tags: *a4
+  /admin/users/{id}/permanent:
+    delete:
+      operationId: AdminManageUsersController_hardDeleteUser
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+      summary: Permanently remove a user (hard delete)
+      tags: *a4
+  /auth/sign-in-password:
+    post:
+      operationId: AuthController_signInWithPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInPasswordDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      summary: Sign in with email and password
+      tags: &a5
+        - Auth
+  /auth/sign-in-email:
+    post:
+      operationId: AuthController_signInWithEmail
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInEmailDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      summary: Request a passwordless sign-in code by email
+      tags: *a5
+  /auth/verify-code:
+    post:
+      operationId: AuthController_verifyCode
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyCodeDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      summary: Verify an emailed code and sign in
+      tags: *a5
+  /auth/sign-in-google:
+    post:
+      operationId: AuthController_signInWithGoogle
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInGoogleDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      summary: Sign in with a Google ID token
+      tags: *a5
+  /auth/refresh:
+    post:
+      operationId: AuthController_refresh
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      summary: Exchange a refresh token for a fresh token pair
+      tags: *a5
+  /auth/logout:
+    post:
+      operationId: AuthController_logout
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      summary: Log out and revoke the stored refresh token
+      tags: *a5
+  /businesses/categories:
+    get:
+      operationId: BusinessController_getCategories
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+      security: &a6
+        - bearer: []
+      summary: List suggested business categories
+      tags: &a7
+        - Business
+  /businesses/mine:
+    get:
+      operationId: BusinessController_getMine
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessResponse"
+      security: *a6
+      summary: Get the authenticated user's business
+      tags: *a7
+  /businesses:
+    post:
+      operationId: BusinessController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBusinessDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessResponse"
+      security: *a6
+      summary: Create a business
+      tags: *a7
+  /businesses/{id}:
+    get:
+      operationId: BusinessController_getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessResponse"
+      security: *a6
+      summary: Get a business by id
+      tags: *a7
+    patch:
+      operationId: BusinessController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBusinessDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessResponse"
+      security: *a6
+      summary: Update a business
+      tags: *a7
+  /customers:
+    post:
+      operationId: CustomerController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+      security: &a8
+        - bearer: []
+      summary: Create a customer
+      tags: &a9
+        - Customers
+    get:
+      operationId: CustomerController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: q
+          required: false
+          in: query
+          description: Free-text search query.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCustomerResponse"
+      security: *a8
+      summary: List customers (paginated, searchable)
+      tags: *a9
+  /customers/import:
+    post:
+      operationId: CustomerController_importCustomers
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportCustomersDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkImportResultResponse"
+      security: *a8
+      summary: Bulk import customers
+      tags: *a9
+  /customers/{id}:
+    get:
+      operationId: CustomerController_getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+      security: *a8
+      summary: Get a customer by id
+      tags: *a9
+    patch:
+      operationId: CustomerController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+      security: *a8
+      summary: Update a customer by id
+      tags: *a9
+    delete:
+      operationId: CustomerController_delete
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+      security: *a8
+      summary: Delete a customer by id
+      tags: *a9
+  /appointments:
+    post:
+      operationId: AppointmentController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppointmentDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentResponse"
+      security: &a10
+        - bearer: []
+      summary: Create an appointment
+      tags: &a11
+        - Appointments
+    get:
+      operationId: AppointmentController_list
+      parameters:
+        - name: from
+          required: true
+          in: query
+          schema:
+            type: string
+        - name: to
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppointmentResponse"
+      security: *a10
+      summary: List appointments
+      tags: *a11
+  /appointments/{id}:
+    get:
+      operationId: AppointmentController_getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentResponse"
+      security: *a10
+      summary: Get an appointment by id
+      tags: *a11
+    patch:
+      operationId: AppointmentController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppointmentDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentResponse"
+      security: *a10
+      summary: Update an appointment
+      tags: *a11
+    delete:
+      operationId: AppointmentController_delete
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentResponse"
+      security: *a10
+      summary: Delete an appointment
+      tags: *a11
+  /resources:
+    post:
+      operationId: ResourceController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResourceDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceResponse"
+      security: &a12
+        - bearer: []
+      summary: Create a resource (product or service)
+      tags: &a13
+        - Resources
+    get:
+      operationId: ResourceController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: q
+          required: false
+          in: query
+          description: Free-text search query.
+          schema:
+            type: string
+        - name: type
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - product
+              - service
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResourceResponse"
+      security: *a12
+      summary: List resources (paginated, searchable)
+      tags: *a13
+  /resources/{id}:
+    get:
+      operationId: ResourceController_getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceResponse"
+      security: *a12
+      summary: Get a resource by id
+      tags: *a13
+    patch:
+      operationId: ResourceController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateResourceDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceResponse"
+      security: *a12
+      summary: Update a resource
+      tags: *a13
+    delete:
+      operationId: ResourceController_delete
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceResponse"
+      security: *a12
+      summary: Delete a resource
+      tags: *a13
+  /orders:
+    post:
+      operationId: OrderController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+      security: &a14
+        - bearer: []
+      summary: Create an order
+      tags: &a15
+        - Orders
+    get:
+      operationId: OrderController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: q
+          required: false
+          in: query
+          description: Free-text search query.
+          schema:
+            type: string
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - completed
+              - cancelled
+        - name: customerId
+          required: false
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedOrderResponse"
+      security: *a14
+      summary: List orders (paginated, searchable)
+      tags: *a15
+  /orders/{id}:
+    get:
+      operationId: OrderController_getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+      security: *a14
+      summary: Get an order by id
+      tags: *a15
+    patch:
+      operationId: OrderController_updateItems
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+      security: *a14
+      summary: Edit the items of a pending order
+      tags: *a15
+  /orders/{id}/status:
+    patch:
+      operationId: OrderController_updateStatus
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+      security: *a14
+      summary: Update an order's status
+      tags: *a15
+  /invoices:
+    post:
+      operationId: InvoiceController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+      security: &a16
+        - bearer: []
+      summary: Create an invoice from existing orders
+      tags: &a17
+        - Invoices
+    get:
+      operationId: InvoiceController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: q
+          required: false
+          in: query
+          description: Free-text search query.
+          schema:
+            type: string
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - DRAFT
+              - SENT
+              - PAID
+              - PARTIALLY_PAID
+              - OVERDUE
+              - CANCELLED
+        - name: customerId
+          required: false
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInvoiceResponse"
+      security: *a16
+      summary: List invoices (paginated, searchable)
+      tags: *a17
+  /invoices/{id}:
+    get:
+      operationId: InvoiceController_getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+      security: *a16
+      summary: Get an invoice by id
+      tags: *a17
+  /invoices/{id}/payment:
+    patch:
+      operationId: InvoiceController_recordPayment
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordPaymentDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+      security: *a16
+      summary: Record a payment against an invoice
+      tags: *a17
+  /invoices/{id}/send:
+    post:
+      operationId: InvoiceController_send
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendInvoiceDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+      security: *a16
+      summary: Send an invoice to the customer
+      tags: *a17
+  /invoices/{id}/status:
+    patch:
+      operationId: InvoiceController_updateStatus
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInvoiceStatusDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+      security: *a16
+      summary: Update an invoice's status
+      tags: *a17
+  /dashboard/summary:
+    get:
+      operationId: DashboardController_getSummary
+      parameters:
+        - name: range
+          required: false
+          in: query
+          description: Chart window. Defaults to 30d.
+          schema:
+            enum:
+              - 7d
+              - 30d
+              - 90d
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummaryResponse"
+      security:
+        - bearer: []
+      summary: Get dashboard summary
+      tags:
+        - Dashboard
+  /search:
+    get:
+      operationId: SearchController_search
+      parameters:
+        - name: q
+          required: true
+          in: query
+          description: Search query.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResultsResponse"
+      security:
+        - bearer: []
+      summary: Global search across all resources
+      tags:
+        - Search
+info:
+  title: Ventura API
+  description: Ventura backend API.
+  version: 1.0.0
+  contact: {}
+tags: []
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+      description: JWT access token from /auth sign-in.
+  schemas:
+    CreateUserWithEmailDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Ada
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+      required:
+        - firstName
+        - email
+    UserResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        shortId:
+          type: string
+          example: aB3xY9kP
+        firstName:
+          type: string
+          example: Ada
+        lastName:
+          type: object
+          nullable: true
+          example: Lovelace
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+        googleId:
+          type: object
+          nullable: true
+        avatarUrl:
+          type: object
+          nullable: true
+        avatarKey:
+          type: object
+          nullable: true
+        businessId:
+          type: object
+          nullable: true
+        isSystem:
+          type: boolean
+          example: false
+        isActive:
+          type: boolean
+          example: true
+        isEmailVerified:
+          type: boolean
+          example: false
+        deleted:
+          type: boolean
+          example: false
+        deletedAt:
+          type: string
+          nullable: true
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - shortId
+        - firstName
+        - email
+        - isSystem
+        - isActive
+        - isEmailVerified
+        - deleted
+        - createdAt
+        - updatedAt
+    CreateUserWithGoogleDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Ada
+        lastName:
+          type: string
+          example: Lovelace
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+        googleId:
+          type: string
+          example: google-oauth2|1234567890
+        avatarUrl:
+          type: string
+          example: https://example.com/a.png
+      required:
+        - firstName
+        - email
+        - googleId
+    GoogleLinkPreferencesDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+          enum:
+            - keep
+            - update
+        lastName:
+          type: string
+          enum:
+            - keep
+            - update
+        avatarUrl:
+          type: string
+          enum:
+            - keep
+            - update
+    LinkGoogleAccountDto:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        googleId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        avatarUrl:
+          type: string
+        preferences:
+          $ref: "#/components/schemas/GoogleLinkPreferencesDto"
+      required:
+        - email
+        - googleId
+    CreatePasswordDto:
+      type: object
+      properties:
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+        newPassword:
+          type: string
+          minLength: 12
+          example: sup3r-Secret!pw
+      required:
+        - userId
+        - email
+        - newPassword
+    UpdatePasswordDto:
+      type: object
+      properties:
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 12
+          example: new-Passw0rd!yy
+      required:
+        - userId
+        - email
+        - oldPassword
+        - newPassword
+    HasPasswordResponse:
+      type: object
+      properties:
+        hasPassword:
+          type: boolean
+          example: true
+      required:
+        - hasPassword
+    UpdateProfileDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Ada
+        lastName:
+          type: object
+          nullable: true
+          example: Lovelace
+        avatarUrl:
+          type: object
+          nullable: true
+    UpdateFirstNameDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Ada
+      required:
+        - firstName
+    UpdateLastNameDto:
+      type: object
+      properties:
+        lastName:
+          type: object
+          nullable: true
+          example: Lovelace
+      required:
+        - lastName
+    RequestEmailChangeDto:
+      type: object
+      properties:
+        newEmail:
+          type: string
+          example: new-address@example.com
+          format: email
+      required:
+        - newEmail
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Logged out.
+      required:
+        - message
+    ConfirmEmailChangeDto:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "123456"
+          minLength: 6
+          maxLength: 6
+      required:
+        - code
+    UpdateAvatarDto:
+      type: object
+      properties:
+        avatarUrl:
+          type: object
+          nullable: true
+          example: https://example.com/a.png
+        avatarKey:
+          type: object
+          nullable: true
+          example: avatars/abc.png
+      required:
+        - avatarUrl
+        - avatarKey
+    SetBusinessIdDto:
+      type: object
+      properties:
+        businessId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+      required:
+        - businessId
+    PresignUploadDto:
+      type: object
+      properties:
+        contentType:
+          type: string
+          example: image/png
+        filename:
+          type: string
+          example: avatar.png
+        folder:
+          type: string
+          example: avatars
+      required:
+        - contentType
+        - filename
+    PresignedUploadResponse:
+      type: object
+      properties:
+        fileKey:
+          type: string
+          example: avatars/abc123.png
+        fileUrl:
+          type: string
+          example: https://cdn.example.com/avatars/abc123.png
+        uploadUrl:
+          type: string
+          example: https://s3.example.com/bucket/avatars/abc123.png?X-Amz-...
+      required:
+        - fileKey
+        - fileUrl
+        - uploadUrl
+    DeleteFileDto:
+      type: object
+      properties:
+        fileKey:
+          type: string
+          example: avatars/abc123.png
+      required:
+        - fileKey
+    DeleteFileResponse:
+      type: object
+      properties:
+        fileKey:
+          type: string
+          example: avatars/abc123.png
+      required:
+        - fileKey
+    CreateAdminDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Ada Lovelace
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+      required:
+        - name
+        - email
+    AdminResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        shortId:
+          type: string
+          example: aB3xY9kP
+        name:
+          type: string
+          example: Ada Lovelace
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - shortId
+        - name
+        - email
+        - createdAt
+        - updatedAt
+    UpdateAdminProfileDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Ada Lovelace
+    SignInPasswordDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+        password:
+          type: string
+          example: S3curePassw0rd!
+      required:
+        - email
+        - password
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          type: object
+      required:
+        - accessToken
+        - refreshToken
+        - user
+    SignInEmailDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+      required:
+        - email
+    VerifyCodeDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+        code:
+          type: string
+          example: "123456"
+      required:
+        - email
+        - code
+    SignInGoogleDto:
+      type: object
+      properties:
+        idToken:
+          type: string
+          example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+      required:
+        - idToken
+    BusinessResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        shortId:
+          type: string
+          example: aB3xY9kP
+        name:
+          type: string
+          example: Acme Corp
+        ownerId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        categories:
+          example:
+            - Retail
+            - Wholesale
+          type: array
+          items:
+            type: string
+        description:
+          type: object
+          nullable: true
+          example: We sell the finest widgets in town.
+        tagLine:
+          type: object
+          nullable: true
+          example: Quality you can trust.
+        logo:
+          type: object
+          nullable: true
+          example: https://cdn.example.com/logos/acme.png
+        logoKey:
+          type: object
+          nullable: true
+          example: logos/acme.png
+        email:
+          type: object
+          nullable: true
+          format: email
+          example: hello@acme.com
+        phone:
+          type: object
+          nullable: true
+          example: +1-555-123-4567
+        website:
+          type: object
+          nullable: true
+          example: https://acme.com
+        address:
+          type: object
+          nullable: true
+          example: 123 Market St
+        city:
+          type: object
+          nullable: true
+          example: San Francisco
+        state:
+          type: object
+          nullable: true
+          example: CA
+        country:
+          type: object
+          nullable: true
+          example: USA
+        taxId:
+          type: object
+          nullable: true
+          example: 12-3456789
+        registrationNumber:
+          type: object
+          nullable: true
+          example: REG-2024-001
+        businessHours:
+          type: object
+          nullable: true
+          example:
+            monday:
+              open: 09:00
+              close: 17:00
+            tuesday:
+              open: 09:00
+              close: 17:00
+        socials:
+          type: object
+          example:
+            instagram: "@acme"
+            website: https://acme.com
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - shortId
+        - name
+        - ownerId
+        - categories
+        - isActive
+        - createdAt
+        - updatedAt
+    CreateBusinessDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Acme Corp
+        categories:
+          example:
+            - Retail
+            - Wholesale
+          type: array
+          items:
+            type: string
+      required:
+        - name
+    UpdateBusinessDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Acme Corp
+        categories:
+          example:
+            - Retail
+            - Wholesale
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+          example: We sell the finest widgets in town.
+        tagLine:
+          type: string
+          example: Quality you can trust.
+        logo:
+          type: string
+          example: https://cdn.example.com/logos/acme.png
+        logoKey:
+          type: string
+          example: logos/acme.png
+        email:
+          type: string
+          format: email
+          example: hello@acme.com
+        phone:
+          type: string
+          example: +1-555-123-4567
+        website:
+          type: string
+          example: https://acme.com
+        address:
+          type: string
+          example: 123 Market St
+        city:
+          type: string
+          example: San Francisco
+        state:
+          type: string
+          example: CA
+        country:
+          type: string
+          example: USA
+        taxId:
+          type: string
+          example: 12-3456789
+        registrationNumber:
+          type: string
+          example: REG-2024-001
+        businessHours:
+          type: object
+          example:
+            monday:
+              open: 09:00
+              close: 17:00
+            tuesday:
+              open: 09:00
+              close: 17:00
+        socials:
+          type: object
+          example:
+            instagram: "@acme"
+            tiktok: "@acme"
+            website: https://acme.com
+    CreateCustomerDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Jane Doe
+        email:
+          type: string
+          format: email
+          example: jane@example.com
+        phone:
+          type: string
+          example: +1-555-987-6543
+        notes:
+          type: string
+          example: Prefers email contact.
+      required:
+        - name
+    CustomerResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        shortId:
+          type: string
+          example: aB3xY9kP
+        businessId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        name:
+          type: string
+          example: Jane Doe
+        email:
+          type: object
+          nullable: true
+          format: email
+          example: jane@example.com
+        phone:
+          type: object
+          nullable: true
+          example: +1-555-987-6543
+        notes:
+          type: object
+          nullable: true
+          example: Prefers email contact.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - shortId
+        - businessId
+        - name
+        - createdAt
+        - updatedAt
+    ImportCustomersDto:
+      type: object
+      properties:
+        customers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateCustomerDto"
+      required:
+        - customers
+    BulkImportResultResponse:
+      type: object
+      properties:
+        created:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerResponse"
+        skipped:
+          example:
+            - index: 2
+              reason: Duplicate email.
+          type: array
+          items:
+            type: object
+        failed:
+          example:
+            - index: 5
+              reason: Validation failed.
+          type: array
+          items:
+            type: object
+      required:
+        - created
+        - skipped
+        - failed
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: number
+          example: 137
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        totalPages:
+          type: number
+          example: 7
+      required:
+        - total
+        - page
+        - limit
+        - totalPages
+    PaginatedCustomerResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+      required:
+        - data
+        - meta
+    UpdateCustomerDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Jane Doe
+        email:
+          type: string
+          format: email
+          example: jane@example.com
+        phone:
+          type: string
+          example: +1-555-987-6543
+        notes:
+          type: string
+          example: Prefers email contact.
+    InviteeDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Ada Lovelace
+        email:
+          type: string
+          example: ada@example.com
+          format: email
+        customerId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+      required:
+        - name
+    RecurrenceDto:
+      type: object
+      properties:
+        frequency:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        interval:
+          type: number
+          example: 1
+        until:
+          type: string
+          example: 2026-12-31T00:00:00.000Z
+      required:
+        - frequency
+    CreateAppointmentDto:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Client consultation
+        start:
+          type: string
+          example: 2026-06-17T09:00:00.000Z
+        end:
+          type: string
+          example: 2026-06-17T10:00:00.000Z
+        notes:
+          type: string
+          example: Bring the signed contract.
+        location:
+          type: string
+          example: Office, Accra
+        invitees:
+          type: array
+          items:
+            $ref: "#/components/schemas/InviteeDto"
+        recurrence:
+          $ref: "#/components/schemas/RecurrenceDto"
+      required:
+        - title
+        - start
+        - end
+    InviteeResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Ada Lovelace
+        email:
+          type: object
+          nullable: true
+          example: ada@example.com
+        customerId:
+          type: object
+          nullable: true
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+      required:
+        - name
+    RecurrenceResponse:
+      type: object
+      properties:
+        frequency:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        interval:
+          type: number
+          example: 1
+        until:
+          type: string
+          nullable: true
+          format: date-time
+      required:
+        - frequency
+        - interval
+    AppointmentResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        shortId:
+          type: string
+          example: aB3xY9kP
+        businessId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        createdBy:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        title:
+          type: string
+          example: Client consultation
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        notes:
+          type: object
+          nullable: true
+        location:
+          type: object
+          nullable: true
+          example: Office, Accra
+        invitees:
+          type: array
+          items:
+            $ref: "#/components/schemas/InviteeResponse"
+        recurrence:
+          nullable: true
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/RecurrenceResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - shortId
+        - businessId
+        - createdBy
+        - title
+        - start
+        - end
+        - invitees
+        - createdAt
+        - updatedAt
+    UpdateAppointmentDto:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Client consultation
+        start:
+          type: string
+          example: 2026-06-17T09:00:00.000Z
+        end:
+          type: string
+          example: 2026-06-17T10:00:00.000Z
+        notes:
+          type: string
+          example: Bring the signed contract.
+        location:
+          type: string
+          example: Office, Accra
+        invitees:
+          type: array
+          items:
+            $ref: "#/components/schemas/InviteeDto"
+        recurrence:
+          $ref: "#/components/schemas/RecurrenceDto"
+        clearRecurrence:
+          type: boolean
+          example: true
+    CreateResourceDto:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - product
+            - service
+          example: product
+        name:
+          type: string
+          example: Espresso Beans 1kg
+        price:
+          type: number
+          example: 9.99
+        primaryImage:
+          type: string
+          example: https://example.com/images/primary.png
+        supportingImages:
+          example:
+            - https://example.com/images/1.png
+          type: array
+          items:
+            type: string
+        primaryImageKey:
+          type: string
+          example: uploads/abc123.png
+        supportingImageKeys:
+          example:
+            - uploads/abc123.png
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+          example: Single-origin medium roast.
+        notes:
+          type: string
+          example: Store in a cool, dry place.
+        availableQuantity:
+          type: number
+          example: 100
+        lowStockThreshold:
+          type: number
+          example: 5
+        businessHours:
+          type: object
+          example:
+            monday:
+              open: 09:00
+              close: 17:00
+      required:
+        - type
+        - name
+        - price
+    ResourceResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        shortId:
+          type: string
+          example: aB3xY9kP
+        businessId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        type:
+          type: string
+          enum:
+            - product
+            - service
+          example: product
+        name:
+          type: string
+          example: Espresso Beans 1kg
+        price:
+          type: number
+          example: 9.99
+        primaryImage:
+          type: object
+          nullable: true
+          example: https://example.com/images/primary.png
+        supportingImages:
+          example:
+            - https://example.com/images/1.png
+          type: array
+          items:
+            type: string
+        primaryImageKey:
+          type: object
+          nullable: true
+          example: uploads/abc123.png
+        supportingImageKeys:
+          example:
+            - uploads/abc123.png
+          type: array
+          items:
+            type: string
+        description:
+          type: object
+          nullable: true
+          example: Single-origin medium roast.
+        notes:
+          type: object
+          nullable: true
+          example: Store in a cool, dry place.
+        availableQuantity:
+          type: number
+          example: 100
+        lowStockThreshold:
+          type: number
+          example: 5
+        businessHours:
+          type: object
+          nullable: true
+          example:
+            monday:
+              open: 09:00
+              close: 17:00
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - shortId
+        - businessId
+        - type
+        - name
+        - price
+        - supportingImages
+        - supportingImageKeys
+        - availableQuantity
+        - lowStockThreshold
+        - createdAt
+        - updatedAt
+    PaginatedResourceResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+      required:
+        - data
+        - meta
+    UpdateResourceDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Espresso Beans 1kg
+        price:
+          type: number
+          example: 9.99
+        primaryImage:
+          type: string
+          example: https://example.com/images/primary.png
+        supportingImages:
+          example:
+            - https://example.com/images/1.png
+          type: array
+          items:
+            type: string
+        primaryImageKey:
+          type: string
+          example: uploads/abc123.png
+        supportingImageKeys:
+          example:
+            - uploads/abc123.png
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+          example: Single-origin medium roast.
+        notes:
+          type: string
+          example: Store in a cool, dry place.
+        availableQuantity:
+          type: number
+          example: 100
+        lowStockThreshold:
+          type: number
+          example: 5
+        businessHours:
+          type: object
+          example:
+            monday:
+              open: 09:00
+              close: 17:00
+    CreateOrderItemDto:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        quantity:
+          type: number
+          example: 2
+      required:
+        - resourceId
+        - quantity
+    CreateOrderDto:
+      type: object
+      properties:
+        customerId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateOrderItemDto"
+      required:
+        - customerId
+        - items
+    OrderItemResponse:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        type:
+          type: string
+          enum:
+            - product
+            - service
+          example: product
+        name:
+          type: string
+          example: Espresso Beans 1kg
+        price:
+          type: number
+          example: 9.99
+        quantity:
+          type: number
+          example: 2
+        subTotal:
+          type: number
+          example: 19.98
+      required:
+        - resourceId
+        - type
+        - name
+        - price
+        - quantity
+        - subTotal
+    OrderResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        orderNumber:
+          type: string
+          example: ORD-AB3XY9KP
+        businessId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        customerId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        customerName:
+          type: string
+          example: Ada Lovelace
+        customerEmail:
+          type: object
+          nullable: true
+          example: ada@example.com
+          format: email
+        customerPhone:
+          type: object
+          nullable: true
+          example: "+15551234567"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemResponse"
+        totalAmount:
+          type: number
+          example: 19.98
+        status:
+          type: string
+          enum:
+            - pending
+            - completed
+            - cancelled
+          example: pending
+        invoiceId:
+          type: object
+          nullable: true
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - orderNumber
+        - businessId
+        - customerId
+        - customerName
+        - items
+        - totalAmount
+        - status
+        - createdAt
+        - updatedAt
+    PaginatedOrderResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+      required:
+        - data
+        - meta
+    UpdateOrderDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateOrderItemDto"
+      required:
+        - items
+    UpdateOrderStatusDto:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - pending
+            - completed
+            - cancelled
+          example: completed
+      required:
+        - status
+    CreateInvoiceDto:
+      type: object
+      properties:
+        orderIds:
+          example:
+            - 665f1b2c3d4e5f6a7b8c9d0e
+          type: array
+          items:
+            type: string
+        invoiceType:
+          type: string
+          enum:
+            - STANDARD
+            - PROFORMA
+            - RECEIPT
+        dueDate:
+          type: string
+          example: 2026-07-01T00:00:00.000Z
+        notes:
+          type: string
+          example: Payment due within 14 days.
+      required:
+        - orderIds
+    InvoiceResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        invoiceNumber:
+          type: string
+          example: VEN-260617120000123-AB12CD
+        businessId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        orderIds:
+          example:
+            - 665f1b2c3d4e5f6a7b8c9d0e
+          type: array
+          items:
+            type: string
+        customerId:
+          type: object
+          nullable: true
+        customerName:
+          type: object
+          nullable: true
+          example: Ada Lovelace
+        customerEmail:
+          type: object
+          nullable: true
+          example: ada@example.com
+        customerPhone:
+          type: object
+          nullable: true
+          example: "+233200000000"
+        invoiceType:
+          type: string
+          enum:
+            - STANDARD
+            - PROFORMA
+            - RECEIPT
+        subtotal:
+          type: number
+          example: 100
+        vatRate:
+          type: number
+          example: 0.15
+        vatAmount:
+          type: number
+          example: 15
+        nhilRate:
+          type: number
+          example: 0.025
+        nhilAmount:
+          type: number
+          example: 2.5
+        getfundRate:
+          type: number
+          example: 0.025
+        getfundAmount:
+          type: number
+          example: 2.5
+        totalTax:
+          type: number
+          example: 20
+        totalAmount:
+          type: number
+          example: 120
+        amountPaid:
+          type: number
+          example: 0
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - SENT
+            - PAID
+            - PARTIALLY_PAID
+            - OVERDUE
+            - CANCELLED
+        paymentMethod:
+          type: string
+          nullable: true
+          enum:
+            - CASH
+            - MOBILE_MONEY
+            - BANK_TRANSFER
+            - CARD
+            - CHEQUE
+        paymentDate:
+          type: string
+          nullable: true
+          format: date-time
+        issueDate:
+          type: string
+          nullable: true
+          format: date-time
+        dueDate:
+          type: string
+          nullable: true
+          format: date-time
+        sentAt:
+          type: string
+          nullable: true
+          format: date-time
+        notes:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - invoiceNumber
+        - businessId
+        - orderIds
+        - invoiceType
+        - subtotal
+        - vatRate
+        - vatAmount
+        - nhilRate
+        - nhilAmount
+        - getfundRate
+        - getfundAmount
+        - totalTax
+        - totalAmount
+        - amountPaid
+        - status
+        - createdAt
+        - updatedAt
+    PaginatedInvoiceResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+      required:
+        - data
+        - meta
+    RecordPaymentDto:
+      type: object
+      properties:
+        amount:
+          type: number
+          example: 9.99
+        paymentMethod:
+          type: string
+          enum:
+            - CASH
+            - MOBILE_MONEY
+            - BANK_TRANSFER
+            - CARD
+            - CHEQUE
+        paymentDate:
+          type: string
+          example: 2026-06-17T00:00:00.000Z
+      required:
+        - amount
+        - paymentMethod
+    SendInvoiceDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: ada@example.com
+        message:
+          type: string
+          example: Thanks for your business — payment is due in 14 days.
+    UpdateInvoiceStatusDto:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - SENT
+            - PAID
+            - PARTIALLY_PAID
+            - OVERDUE
+            - CANCELLED
+      required:
+        - status
+    DashboardRevenueResponse:
+      type: object
+      properties:
+        total:
+          type: number
+          example: 1250.5
+        last30Days:
+          type: number
+          example: 450
+        previous30Days:
+          type: number
+          example: 300
+        trendPercent:
+          type: object
+          nullable: true
+          example: 50
+      required:
+        - total
+        - last30Days
+        - previous30Days
+    DashboardTopProductResponse:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        name:
+          type: string
+          example: Bag of cement
+        unitsSold:
+          type: number
+          example: 42
+      required:
+        - resourceId
+        - name
+        - unitsSold
+    DashboardInventoryResponse:
+      type: object
+      properties:
+        lowStockCount:
+          type: number
+          example: 3
+        topProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardTopProductResponse"
+      required:
+        - lowStockCount
+        - topProducts
+    DashboardRecentInvoiceResponse:
+      type: object
+      properties:
+        invoiceId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        invoiceNumber:
+          type: string
+          example: VEN-260617120000123-AB12CD
+        customerName:
+          type: object
+          nullable: true
+          example: Ada Lovelace
+        totalAmount:
+          type: number
+          example: 120
+        status:
+          type: string
+          example: PAID
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - invoiceId
+        - invoiceNumber
+        - totalAmount
+        - status
+        - createdAt
+    DashboardDailyRevenueResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          example: 2026-06-17
+        amount:
+          type: number
+          example: 99.99
+      required:
+        - date
+        - amount
+    DashboardSummaryResponse:
+      type: object
+      properties:
+        revenue:
+          $ref: "#/components/schemas/DashboardRevenueResponse"
+        inventory:
+          $ref: "#/components/schemas/DashboardInventoryResponse"
+        recentInvoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardRecentInvoiceResponse"
+        dailyRevenue:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardDailyRevenueResponse"
+      required:
+        - revenue
+        - inventory
+        - recentInvoices
+        - dailyRevenue
+    SearchResultsResponse:
+      type: object
+      properties:
+        query:
+          type: string
+          example: acme
+        customers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerResponse"
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceResponse"
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceResponse"
+      required:
+        - query
+        - customers
+        - resources
+        - orders
+        - invoices
