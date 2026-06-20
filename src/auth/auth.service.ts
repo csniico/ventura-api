@@ -8,7 +8,8 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OAuth2Client, type TokenPayload } from 'google-auth-library';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
+import appleSignin from 'apple-signin-auth';
 import * as argon2 from 'argon2';
 import { UserService } from '../user/user.service';
 import { UserDocument } from '../user/schemas/user.schema';
@@ -32,6 +33,10 @@ export class AuthService {
   private readonly googleClientId: string;
   private readonly googleClient: OAuth2Client;
 
+  // Apple identity tokens carry the iOS bundle id (native flow) OR the Services
+  // id (web/Android flow) as `aud`; we accept either.
+  private readonly appleAudiences: string[];
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -45,6 +50,11 @@ export class AuthService {
       '',
     );
     this.googleClient = new OAuth2Client(this.googleClientId);
+
+    this.appleAudiences = [
+      this.configService.get<string>('APPLE_CLIENT_ID', ''),
+      this.configService.get<string>('APPLE_SERVICE_ID', ''),
+    ].filter((a): a is string => !!a);
   }
 
   /**
@@ -225,6 +235,74 @@ export class AuthService {
 
     if (isNew) {
       await this.mailService.sendWelcome(payload.email, user.firstName);
+    }
+
+    return this.buildAuthResult(user);
+  }
+
+  /**
+   * Sign in with an Apple identity token. The token is verified against Apple's
+   * PUBLIC keys (JWKS, fetched + cached by apple-signin-auth) — no Apple secret
+   * or private key is required. `aud` must match the iOS bundle id or the
+   * Services id; when [rawNonce] is provided, SHA256(rawNonce) must equal the
+   * token's `nonce`. Finds-or-creates the user keyed on the Apple `sub`.
+   */
+  async signInWithApple(params: {
+    identityToken: string;
+    rawNonce?: string;
+    firstName?: string;
+    lastName?: string;
+  }): Promise<AuthResult> {
+    if (this.appleAudiences.length === 0) {
+      throw new UnauthorizedException('Apple sign-in is not configured.');
+    }
+
+    let appleId: string;
+    let email: string;
+    try {
+      const payload = await appleSignin.verifyIdToken(params.identityToken, {
+        audience: this.appleAudiences,
+        // Apple embeds SHA256(rawNonce) (hex) in the token's `nonce` claim.
+        nonce: params.rawNonce
+          ? createHash('sha256').update(params.rawNonce).digest('hex')
+          : undefined,
+      });
+      if (!payload?.sub) {
+        throw new UnauthorizedException('Invalid Apple identity token.');
+      }
+      appleId = payload.sub;
+      email = payload.email ?? '';
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
+      throw new UnauthorizedException('Invalid Apple identity token.');
+    }
+
+    const existing = await this.userService.findByAppleId(appleId);
+    if (!existing && !email) {
+      // No prior account and Apple withheld the email — can't create one.
+      throw new UnauthorizedException(
+        'Apple did not provide an email; cannot create an account.',
+      );
+    }
+    const isNew = !existing;
+
+    const user = await this.userService.createWithApple({
+      appleId,
+      email,
+      firstName: params.firstName,
+      lastName: params.lastName,
+    });
+
+    const { reactivated } = await this.userService.reactivateIfWithinWindow(
+      String(user._id),
+    );
+    if (reactivated) {
+      user.deleted = false;
+      user.deletedAt = null;
+    }
+
+    if (isNew && user.email) {
+      await this.mailService.sendWelcome(user.email, user.firstName);
     }
 
     return this.buildAuthResult(user);

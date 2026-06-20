@@ -5,14 +5,17 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshJwtGuard } from './guards/refresh-jwt.guard';
 import { AuthUser } from './types/auth.types';
 import {
+  SignInAppleDto,
   SignInEmailDto,
   SignInGoogleDto,
   SignInPasswordDto,
@@ -64,6 +67,33 @@ export class AuthController {
   @Post('/sign-in-google')
   async signInWithGoogle(@Body() dto: SignInGoogleDto) {
     return this.authService.signInWithGoogle(dto.idToken);
+  }
+
+  /** Sign in with an Apple identity token. Returns tokens and the user. */
+  @ApiOperation({ summary: 'Verify an Apple identity token and sign in' })
+  @ApiResponse({ status: 200, type: AuthResponse })
+  @HttpCode(HttpStatus.OK)
+  @Post('/sign-in-apple')
+  async signInWithApple(@Body() dto: SignInAppleDto) {
+    return this.authService.signInWithApple(dto);
+  }
+
+  /**
+   * Apple web-flow return URL (Android / web). Apple form-POSTs the credential
+   * here (the Services id's registered Return URL); we bounce it back into the
+   * Android app via an `intent://` redirect so the `sign_in_with_apple` plugin
+   * can pick it up. iOS uses the native flow and never hits this. No guard —
+   * Apple calls it directly.
+   */
+  @Post('/apple/callback')
+  appleCallback(@Body() body: Record<string, string>, @Res() res: Response) {
+    const androidPackage =
+      process.env.APPLE_ANDROID_PACKAGE ?? 'com.csniico.ventura';
+    const params = new URLSearchParams(body ?? {}).toString();
+    const redirect =
+      `intent://callback?${params}` +
+      `#Intent;package=${androidPackage};scheme=signinwithapple;end`;
+    return res.redirect(307, redirect);
   }
 
   /** Exchange a valid refresh token (Bearer) for a fresh token pair. */

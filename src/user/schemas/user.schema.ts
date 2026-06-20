@@ -24,6 +24,10 @@ export class User {
   @Prop({ required: false, unique: true, sparse: true, type: String })
   googleId?: string;
 
+  // Stable Apple `sub` from Sign in with Apple. Sparse-unique like googleId.
+  @Prop({ required: false, unique: true, sparse: true, type: String })
+  appleId?: string;
+
   // hidden from query results by default; request explicitly with .select('+password').
   @Prop({ required: false, select: false })
   password?: string;

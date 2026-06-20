@@ -214,6 +214,52 @@ export class UserService {
     });
   }
 
+  /** Find a user by their Apple `sub` (or null). */
+  async findByAppleId(appleId: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ appleId }).exec();
+  }
+
+  /**
+   * Apple sign-in ("Continue with Apple"). Keyed on the stable Apple `sub`:
+   * - If a user already has this [appleId], return it.
+   * - Else, if a user exists with the same email, link the [appleId] onto it.
+   * - Else, create a new account. Apple only sends the name on the first
+   *   authorization, so [firstName]/[lastName] may be empty on later sign-ins.
+   */
+  async createWithApple(params: {
+    appleId: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  }): Promise<UserDocument> {
+    const existingByApple = await this.userModel
+      .findOne({ appleId: params.appleId })
+      .exec();
+    if (existingByApple) return existingByApple;
+
+    const email = this.normalizeEmail(params.email);
+    const existingByEmail = await this.userModel.findOne({ email }).exec();
+    if (existingByEmail) {
+      existingByEmail.appleId = params.appleId;
+      if (!existingByEmail.firstName && params.firstName) {
+        existingByEmail.firstName = params.firstName;
+      }
+      if (!existingByEmail.lastName && params.lastName) {
+        existingByEmail.lastName = params.lastName;
+      }
+      existingByEmail.isEmailVerified = true;
+      return existingByEmail.save();
+    }
+
+    return this.userModel.create({
+      firstName: params.firstName || email.split('@')[0] || 'there',
+      lastName: params.lastName,
+      email,
+      appleId: params.appleId,
+      isEmailVerified: true,
+    });
+  }
+
   /**
    * Link a Google account to an existing user (found by email).
    *
