@@ -30,7 +30,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DEV_IMAGE_NAME }}:${{ steps.sha.outputs.short }}
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.IMAGE_NAME }}:${{ steps.sha.outputs.short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -38,11 +38,20 @@ jobs:
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DEV_IMAGE_NAME }}:${{ steps.sha.outputs.short }}
+          IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.IMAGE_NAME }}:${{ steps.sha.outputs.short }}
         run: |
-          curl --fail --silent --show-error \
+          response=$(curl --silent --show-error \
+            --write-out "\n%{http_code}" \
             --request POST \
             "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
             --header "Authorization: Bearer ${RENDER_API_KEY}" \
             --header "Content-Type: application/json" \
-            --data "{\"imageUrl\": \"${IMAGE}\"}"
+            --data "{\"imageUrl\": \"${IMAGE}\"}")
+          status=$(tail -n1 <<<"$response")
+          body=$(sed '$d' <<<"$response")
+          echo "HTTP $status"
+          echo "$body"
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Render deploy failed" >&2
+            exit 1
+          fi
