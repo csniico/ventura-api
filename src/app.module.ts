@@ -16,6 +16,7 @@ import { OrderModule } from './order/order.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SearchModule } from './search/search.module';
+import { SetupModule } from './setup/setup.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
@@ -52,6 +53,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     InvoiceModule,
     DashboardModule,
     SearchModule,
+    SetupModule,
   ],
   controllers: [AppController],
   providers: [AppService],
