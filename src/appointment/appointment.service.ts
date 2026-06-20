@@ -6,7 +6,11 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CustomerService } from '../customer/customer.service';
-import { Appointment, AppointmentDocument } from './schemas/appointment.schema';
+import {
+  Appointment,
+  AppointmentDocument,
+  AppointmentStatus,
+} from './schemas/appointment.schema';
 import { CreateAppointmentDto, InviteeDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
@@ -129,6 +133,17 @@ export class AppointmentService {
       throw new NotFoundException('Appointment not found.');
     }
     return appointment;
+  }
+
+  /** Set an appointment's status (scheduled / completed / attended / cancelled). */
+  async updateStatus(
+    businessId: string,
+    appointmentId: string,
+    status: AppointmentStatus,
+  ): Promise<AppointmentDocument> {
+    const appointment = await this.getById(businessId, appointmentId);
+    appointment.status = status;
+    return appointment.save();
   }
 
   /** Update an appointment, scoped to the business. */

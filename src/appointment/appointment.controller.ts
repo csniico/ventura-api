@@ -25,6 +25,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthUser } from '../auth/types/auth.types';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 import { AppointmentResponse } from './responses/appointment.response';
 
 interface AuthedRequest {
@@ -96,6 +97,20 @@ export class AppointmentController {
   ) {
     const businessId = await this.resolveBusinessId(req);
     return this.appointmentService.update(businessId, id, dto);
+  }
+
+  /** Mark an appointment scheduled / completed / attended / cancelled. */
+  @ApiOperation({ summary: 'Update an appointment\'s status' })
+  @ApiResponse({ status: 200, type: AppointmentResponse })
+  @HttpCode(HttpStatus.OK)
+  @Patch('/:id/status')
+  async updateStatus(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateAppointmentStatusDto,
+  ) {
+    const businessId = await this.resolveBusinessId(req);
+    return this.appointmentService.updateStatus(businessId, id, dto.status);
   }
 
   /** Delete an appointment. */

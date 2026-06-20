@@ -8,6 +8,14 @@ export enum RecurrenceFrequency {
   MONTHLY = 'monthly',
 }
 
+/** Lifecycle state of an appointment. */
+export enum AppointmentStatus {
+  SCHEDULED = 'scheduled',
+  COMPLETED = 'completed',
+  ATTENDED = 'attended',
+  CANCELLED = 'cancelled',
+}
+
 /** Someone invited: either a linked customer (customerId) or an ad-hoc email. */
 @Schema({ _id: false })
 export class Invitee {
@@ -74,6 +82,13 @@ export class Appointment {
   // Non-null when the appointment repeats. The client expands occurrences.
   @Prop({ type: RecurrenceSchema, default: null })
   recurrence?: Recurrence | null;
+
+  @Prop({
+    type: String,
+    enum: AppointmentStatus,
+    default: AppointmentStatus.SCHEDULED,
+  })
+  status!: AppointmentStatus;
 
   // createdAt / updatedAt added automatically by { timestamps: true }.
 }
