@@ -1,8 +1,8 @@
-name: Build & Deploy (dev)
+name: Build & Deploy (prod)
 
 on:
   push:
-    branches: [dev]
+    branches: [prod]
   workflow_dispatch:
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       IMAGE_NAME: ${{ vars.IMAGE_NAME }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ secrets.DEV_RENDER_SERVICE_ID }}
+      RENDER_SERVICE_ID: ${{ secrets.PROD_RENDER_SERVICE_ID }}
 
     steps:
       - name: Checkout
