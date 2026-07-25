@@ -14,7 +14,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
-import { UserService } from '../user/user.service';
+import { UserServiceV2 } from '../user/application/user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthUser } from '../auth/types/auth.types';
 import { DashboardSummaryResponse } from './responses/dashboard.response';
@@ -33,7 +33,7 @@ const RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
 export class DashboardController {
   constructor(
     private readonly dashboardService: DashboardService,
-    private readonly userService: UserService,
+    private readonly userService: UserServiceV2,
   ) {}
 
   private async resolveBusinessId(req: AuthedRequest): Promise<string> {

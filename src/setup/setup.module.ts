@@ -1,27 +1,21 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from '../user/user.module';
-import { Customer, CustomerSchema } from '../customer/schemas/customer.schema';
-import { Resource, ResourceSchema } from '../resource/schemas/resource.schema';
-import { Order, OrderSchema } from '../order/schemas/order.schema';
-import { Invoice, InvoiceSchema } from '../invoice/schemas/invoice.schema';
-import {
-  Appointment,
-  AppointmentSchema,
-} from '../appointment/schemas/appointment.schema';
+import { CustomerModule } from '../customer/customer.module';
+import { ResourceModule } from '../resource/resource.module';
+import { OrderModule } from '../order/order.module';
+import { InvoiceModule } from '../invoice/invoice.module';
+import { AppointmentModule } from '../appointment/appointment.module';
 import { SetupService } from './setup.service';
 import { SetupController } from './setup.controller';
 
 @Module({
   imports: [
     UserModule,
-    MongooseModule.forFeature([
-      { name: Customer.name, schema: CustomerSchema },
-      { name: Resource.name, schema: ResourceSchema },
-      { name: Order.name, schema: OrderSchema },
-      { name: Invoice.name, schema: InvoiceSchema },
-      { name: Appointment.name, schema: AppointmentSchema },
-    ]),
+    CustomerModule,
+    ResourceModule,
+    OrderModule,
+    InvoiceModule,
+    AppointmentModule,
   ],
   controllers: [SetupController],
   providers: [SetupService],

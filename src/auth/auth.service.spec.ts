@@ -1,39 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { Connection, Model } from 'mongoose';
 
 import { AuthService } from './auth.service';
-import { UserService } from '../user/user.service';
-import { User, UserDocument, UserSchema } from '../user/schemas/user.schema';
-import {
-  EmailChange,
-  EmailChangeSchema,
-} from '../user/schemas/email-change.schema';
+import { UserServiceV2 } from '../user/application/user.service';
+import { IUser } from '../user/domain/user.entity';
 import { MailService } from '../mail/mail.service';
-import {
-  VerificationCode,
-  VerificationCodeDocument,
-  VerificationCodeSchema,
-} from './schemas/verification-code.schema';
-import { resolveTestUri } from '../test-utils/test-db';
 import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
+import {
+  FakeUserRepository,
+  fakeUserServiceProviders,
+} from '../test-utils/fake-user';
+import {
+  FakeVerificationCodeRepository,
+  fakeVerificationCodeRepositoryProvider,
+} from '../test-utils/fake-verification-code';
 
-describe('AuthService (integration)', () => {
+describe('AuthService', () => {
   let moduleRef: TestingModule;
   let auth: AuthService;
-  let users: UserService;
+  let users: UserServiceV2;
+  let usersFake: FakeUserRepository;
   let jwt: JwtService;
-  let userModel: Model<UserDocument>;
-  let codeModel: Model<VerificationCodeDocument>;
-  let connection: Connection;
+  let codesFake: FakeVerificationCodeRepository;
 
   // Mocked mail so tests never send real emails.
   const mailService = {
@@ -46,57 +37,55 @@ describe('AuthService (integration)', () => {
     process.env.JWT_SECRET ??= 'test-access-secret';
     process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret';
 
-    const uri = resolveTestUri('auth');
+    // Users and verification codes both go through Postgres in prod; here
+    // they're backed by in-memory fakes.
+    const fakeUsers = fakeUserServiceProviders();
+    usersFake = fakeUsers.users;
+    const fakeCodes = fakeVerificationCodeRepositoryProvider();
+    codesFake = fakeCodes.codes;
 
     moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
         EventEmitterModule.forRoot(),
         JwtModule.register({}),
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: User.name, schema: UserSchema },
-          { name: VerificationCode.name, schema: VerificationCodeSchema },
-          { name: EmailChange.name, schema: EmailChangeSchema },
-        ]),
       ],
       providers: [
         AuthService,
-        UserService,
+        ...fakeUsers.providers,
+        fakeCodes.provider,
         { provide: MailService, useValue: mailService },
         mockFileStorageProvider,
       ],
     }).compile();
 
     auth = moduleRef.get(AuthService);
-    users = moduleRef.get(UserService);
+    users = moduleRef.get(UserServiceV2);
     jwt = moduleRef.get(JwtService);
-    userModel = moduleRef.get<Model<UserDocument>>(getModelToken(User.name));
-    codeModel = moduleRef.get<Model<VerificationCodeDocument>>(
-      getModelToken(VerificationCode.name),
-    );
-    connection = moduleRef.get<Connection>(getConnectionToken());
   });
 
-  beforeEach(async () => {
-    await userModel.deleteMany({});
-    await codeModel.deleteMany({});
+  beforeEach(() => {
+    usersFake._clear();
+    codesFake._clear();
     jest.clearAllMocks();
   });
 
   afterAll(async () => {
-    await userModel.deleteMany({});
-    await codeModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
+  // Find the (single) active code stored for an email.
+  const codeFor = (email: string) =>
+    codesFake._all().find((r) => r.email === email);
+  const codeCount = (email: string) =>
+    codesFake._all().filter((r) => r.email === email).length;
+
   const password = 'Sup3r-Secret!pw';
 
-  async function seedUserWithPassword(email: string): Promise<UserDocument> {
+  async function seedUserWithPassword(email: string): Promise<IUser> {
     const user = await users.createWithEmail({ firstName: 'Ada', email });
     await users.createPassword({
-      userId: String(user._id),
+      userId: user.id,
       email,
       newPassword: password,
     });
@@ -111,28 +100,28 @@ describe('AuthService (integration)', () => {
     expect(result.accessToken).toBeTruthy();
     expect(result.refreshToken).toBeTruthy();
     expect(result.user.email).toBe('login@example.com');
-    // Secrets must not leak.
-    expect(result.user.password).toBeUndefined();
-    expect(result.user.hashedRefreshToken).toBeUndefined();
+    // Secrets must not leak (UserResponse has no such fields; check at runtime too).
+    const rawUser = result.user as unknown as Record<string, unknown>;
+    expect(rawUser.password).toBeUndefined();
+    expect(rawUser.hashedRefreshToken).toBeUndefined();
 
     // Access token carries the userId as sub.
     const decoded = jwt.verify<{ sub: string }>(result.accessToken, {
       secret: process.env.JWT_SECRET,
     });
-    expect(decoded.sub).toBe(String(user._id));
+    expect(decoded.sub).toBe(user.id);
 
     // A hashed refresh token was stored.
-    const stored = await users.getHashedRefreshToken(String(user._id));
+    const stored = await users.getHashedRefreshToken(user.id);
     expect(stored).toBeTruthy();
   });
 
   it('reactivates a recently-deleted user on password sign-in', async () => {
     const user = await seedUserWithPassword('comeback@example.com');
-    await users.deleteAccount(String(user._id));
+    await users.deleteAccount(user.id);
 
     // Confirm it is actually soft-deleted (deletedAt recent from deleteAccount).
-    let fromDb = await userModel.findById(user._id).exec();
-    expect(fromDb?.deleted).toBe(true);
+    expect(usersFake._get(user.id)?.deleted).toBe(true);
 
     const result = await auth.signInWithPassword(
       'comeback@example.com',
@@ -141,9 +130,8 @@ describe('AuthService (integration)', () => {
     expect(result.accessToken).toBeTruthy();
     expect(result.user.deleted).toBe(false);
 
-    fromDb = await userModel.findById(user._id).exec();
-    expect(fromDb?.deleted).toBe(false);
-    expect(fromDb?.deletedAt == null).toBe(true);
+    expect(usersFake._get(user.id)?.deleted).toBe(false);
+    expect(usersFake._get(user.id)?.deletedAt == null).toBe(true);
   });
 
   it('rejects a wrong password with 401', async () => {
@@ -176,12 +164,12 @@ describe('AuthService (integration)', () => {
       expect(res.message).toBeTruthy();
 
       // User was auto-created (passwordless = sign-up).
-      const user = await userModel.findOne({ email }).exec();
+      const user = await users.findByEmail(email);
       expect(user).not.toBeNull();
 
       // A code was stored, 6 numeric digits.
-      const record = await codeModel.findOne({ email }).exec();
-      expect(record).not.toBeNull();
+      const record = codeFor(email);
+      expect(record).toBeDefined();
       expect(record!.code).toMatch(/^\d{6}$/);
 
       // It was emailed with the same code.
@@ -197,14 +185,13 @@ describe('AuthService (integration)', () => {
       await auth.requestEmailCode(email);
       await auth.requestEmailCode(email);
 
-      const count = await codeModel.countDocuments({ email });
-      expect(count).toBe(1);
+      expect(codeCount(email)).toBe(1);
     });
 
     it('verifies a valid code, issues tokens, and sends welcome on first verify', async () => {
       const email = 'verify@example.com';
       await auth.requestEmailCode(email);
-      const record = await codeModel.findOne({ email }).exec();
+      const record = codeFor(email);
 
       const result = await auth.verifyEmailCode(email, record!.code);
 
@@ -213,12 +200,11 @@ describe('AuthService (integration)', () => {
       expect(result.user.email).toBe(email);
 
       // Email marked verified.
-      const user = await userModel.findOne({ email }).exec();
+      const user = await users.findByEmail(email);
       expect(user!.isEmailVerified).toBe(true);
 
       // Code consumed.
-      const remaining = await codeModel.countDocuments({ email });
-      expect(remaining).toBe(0);
+      expect(codeCount(email)).toBe(0);
 
       // Welcome sent on first verification.
       expect(mailService.sendWelcome).toHaveBeenCalledWith(
@@ -230,14 +216,12 @@ describe('AuthService (integration)', () => {
     it('does not resend welcome on a subsequent verification', async () => {
       const email = 'second@example.com';
       await auth.requestEmailCode(email);
-      let record = await codeModel.findOne({ email }).exec();
-      await auth.verifyEmailCode(email, record!.code);
+      await auth.verifyEmailCode(email, codeFor(email)!.code);
 
       mailService.sendWelcome.mockClear();
 
       await auth.requestEmailCode(email);
-      record = await codeModel.findOne({ email }).exec();
-      await auth.verifyEmailCode(email, record!.code);
+      await auth.verifyEmailCode(email, codeFor(email)!.code);
 
       expect(mailService.sendWelcome).not.toHaveBeenCalled();
     });
@@ -253,11 +237,9 @@ describe('AuthService (integration)', () => {
     it('rejects an expired code with 400', async () => {
       const email = 'expired@example.com';
       await auth.requestEmailCode(email);
+      const record = codeFor(email);
       // Force the code to be expired.
-      await codeModel
-        .updateOne({ email }, { expiresAt: new Date(Date.now() - 1000) })
-        .exec();
-      const record = await codeModel.findOne({ email }).exec();
+      codesFake._forceExpire(email);
 
       await expect(
         auth.verifyEmailCode(email, record!.code),
@@ -289,9 +271,7 @@ describe('AuthService (integration)', () => {
       expect(result.accessToken).toBeTruthy();
       expect(result.user.email).toBe('guser@example.com');
 
-      const user = await userModel
-        .findOne({ email: 'guser@example.com' })
-        .exec();
+      const user = await users.findByEmail('guser@example.com');
       expect(user!.googleId).toBe('google-sub-1');
       expect(user!.firstName).toBe('Grace');
       expect(user!.lastName).toBe('Hopper');
@@ -304,7 +284,7 @@ describe('AuthService (integration)', () => {
     });
 
     it('signs in an existing user without resending welcome', async () => {
-      await userModel.create({
+      await users.createWithEmail({
         firstName: 'Existing',
         email: 'exists@example.com',
       });
@@ -345,14 +325,14 @@ describe('AuthService (integration)', () => {
         password,
       );
 
-      const id = String(user._id);
+      const id = user.id;
       expect(await auth.verifyRefreshToken(id, refreshToken)).toBe(true);
       expect(await auth.verifyRefreshToken(id, 'some-other-token')).toBe(false);
     });
 
     it('refreshTokens issues a new pair and rotates the stored hash', async () => {
       const user = await seedUserWithPassword('rotate@example.com');
-      const id = String(user._id);
+      const id = user.id;
       const first = await auth.signInWithPassword(
         'rotate@example.com',
         password,
@@ -371,7 +351,7 @@ describe('AuthService (integration)', () => {
 
     it('logout clears the stored refresh token so it can no longer be used', async () => {
       const user = await seedUserWithPassword('logout@example.com');
-      const id = String(user._id);
+      const id = user.id;
       const { refreshToken } = await auth.signInWithPassword(
         'logout@example.com',
         password,
@@ -388,9 +368,7 @@ describe('AuthService (integration)', () => {
         firstName: 'NoTok',
         email: 'notok@example.com',
       });
-      expect(await auth.verifyRefreshToken(String(user._id), 'anything')).toBe(
-        false,
-      );
+      expect(await auth.verifyRefreshToken(user.id, 'anything')).toBe(false);
     });
   });
 });

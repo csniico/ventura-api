@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AdminManageUsersService } from '../services/admin.manage-users.service';
+import { toUserResponse } from '../../user/application/user.mapper';
 
 @ApiTags('Admin')
 @Controller('admin/users')
@@ -24,7 +25,8 @@ export class AdminManageUsersController {
   })
   @Get()
   async listUsers() {
-    return this.manageUsers.listUsers();
+    const users = await this.manageUsers.listUsers();
+    return users.map(toUserResponse);
   }
 
   /** Get a single user by id. */
@@ -32,7 +34,7 @@ export class AdminManageUsersController {
   @ApiResponse({ status: 200, schema: { type: 'object' } })
   @Get('/:id')
   async getUserById(@Param('id') id: string) {
-    return this.manageUsers.getUserById(id);
+    return toUserResponse(await this.manageUsers.getUserById(id));
   }
 
   /** Soft-delete a user (sets deleted=true). */
@@ -41,7 +43,7 @@ export class AdminManageUsersController {
   @HttpCode(HttpStatus.OK)
   @Delete('/:id')
   async softDeleteUser(@Param('id') id: string) {
-    return this.manageUsers.softDeleteUser(id);
+    return toUserResponse(await this.manageUsers.softDeleteUser(id));
   }
 
   /** Restore a soft-deleted user. */
@@ -50,7 +52,7 @@ export class AdminManageUsersController {
   @HttpCode(HttpStatus.OK)
   @Post('/:id/restore')
   async restoreUser(@Param('id') id: string) {
-    return this.manageUsers.restoreUser(id);
+    return toUserResponse(await this.manageUsers.restoreUser(id));
   }
 
   /** Permanently remove a user (admin-only, hard delete). */
@@ -63,6 +65,6 @@ export class AdminManageUsersController {
     if (!removed) {
       throw new NotFoundException('User not found.');
     }
-    return removed;
+    return toUserResponse(removed);
   }
 }

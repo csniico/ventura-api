@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   AppointmentStatus,
   RecurrenceFrequency,
-} from '../schemas/appointment.schema';
+} from '../domain/appointment.entity';
 
 /** An invitee on an appointment. */
 export class InviteeResponse {
@@ -72,7 +72,10 @@ export class AppointmentResponse {
   @ApiProperty({ required: false, nullable: true, type: RecurrenceResponse })
   recurrence?: RecurrenceResponse | null;
 
-  @ApiProperty({ enum: AppointmentStatus, example: AppointmentStatus.SCHEDULED })
+  @ApiProperty({
+    enum: AppointmentStatus,
+    example: AppointmentStatus.SCHEDULED,
+  })
   status!: AppointmentStatus;
 
   @ApiProperty({ type: String, format: 'date-time' })

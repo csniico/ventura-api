@@ -1,56 +1,42 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Connection, Model, Types } from 'mongoose';
 
-import { CustomerService } from './customer.service';
+import { CustomerService } from './application/customer.service';
 import {
-  Customer,
-  CustomerDocument,
-  CustomerSchema,
-} from './schemas/customer.schema';
-import { resolveTestUri } from '../test-utils/test-db';
+  FakeCustomerRepository,
+  fakeCustomerServiceProviders,
+} from '../test-utils/fake-customer';
 
-describe('CustomerService (integration)', () => {
+/**
+ * Behavioural spec for the Postgres-backed CustomerService, run against an
+ * in-memory `FakeCustomerRepository`. The real SQL path (ILIKE search,
+ * pagination) is covered by the live smoke test.
+ */
+describe('CustomerService (behavioural, fake repository)', () => {
   let moduleRef: TestingModule;
   let service: CustomerService;
-  let customerModel: Model<CustomerDocument>;
-  let connection: Connection;
+  let customersFake: FakeCustomerRepository;
 
   const businessA = 'biz-A';
   const businessB = 'biz-B';
+  const MISSING = '20000000-0000-4000-8000-999999999999';
 
   beforeAll(async () => {
-    const uri = resolveTestUri('customer');
+    const fake = fakeCustomerServiceProviders();
+    customersFake = fake.customers;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Customer.name, schema: CustomerSchema },
-        ]),
-      ],
-      providers: [CustomerService],
+      providers: [...fake.providers],
     }).compile();
 
     service = moduleRef.get(CustomerService);
-    customerModel = moduleRef.get<Model<CustomerDocument>>(
-      getModelToken(Customer.name),
-    );
-    connection = moduleRef.get<Connection>(getConnectionToken());
   });
 
-  beforeEach(async () => {
-    await customerModel.deleteMany({});
+  beforeEach(() => {
+    customersFake._clear();
   });
 
   afterAll(async () => {
-    await customerModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
@@ -101,9 +87,7 @@ describe('CustomerService (integration)', () => {
       expect(res.created).toHaveLength(3);
       expect(res.skipped).toHaveLength(0);
       expect(res.failed).toHaveLength(0);
-      expect(
-        await customerModel.countDocuments({ businessId: businessA }),
-      ).toBe(3);
+      expect(customersFake._count()).toBe(3);
     });
 
     it('skips duplicates by email (existing and within the batch)', async () => {
@@ -162,34 +146,33 @@ describe('CustomerService (integration)', () => {
 
     it('gets a customer by id within the business', async () => {
       const c = await service.create(businessA, { name: 'Find' });
-      const found = await service.getById(businessA, String(c._id));
+      const found = await service.getById(businessA, c.id);
       expect(found.name).toBe('Find');
     });
 
     it('does not return a customer from another business (NotFound)', async () => {
       const c = await service.create(businessA, { name: 'Hidden' });
-      await expect(
-        service.getById(businessB, String(c._id)),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getById(businessB, c.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
 
     it('deletes a customer', async () => {
       const c = await service.create(businessA, { name: 'Bye' });
-      await service.delete(businessA, String(c._id));
-      expect(await customerModel.countDocuments()).toBe(0);
+      await service.delete(businessA, c.id);
+      expect(customersFake._count()).toBe(0);
     });
 
     it('cannot delete a customer from another business (NotFound)', async () => {
       const c = await service.create(businessA, { name: 'Safe' });
-      await expect(
-        service.delete(businessB, String(c._id)),
-      ).rejects.toBeInstanceOf(NotFoundException);
-      expect(await customerModel.countDocuments()).toBe(1);
+      await expect(service.delete(businessB, c.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(customersFake._count()).toBe(1);
     });
 
     it('throws NotFound deleting a missing customer', async () => {
-      const missing = new Types.ObjectId().toString();
-      await expect(service.delete(businessA, missing)).rejects.toBeInstanceOf(
+      await expect(service.delete(businessA, MISSING)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });

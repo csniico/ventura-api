@@ -1,68 +1,56 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
 
 import { SearchService } from './search.service';
-import { CustomerService } from '../customer/customer.service';
+import { CustomerService } from '../customer/application/customer.service';
 import {
-  Customer,
-  CustomerDocument,
-  CustomerSchema,
-} from '../customer/schemas/customer.schema';
-import { ResourceService } from '../resource/resource.service';
+  FakeCustomerRepository,
+  fakeCustomerServiceProviders,
+} from '../test-utils/fake-customer';
+import { ResourceService } from '../resource/application/resource.service';
+import { ResourceType } from '../resource/domain/resource.entity';
 import {
-  Resource,
-  ResourceSchema,
-  ResourceType,
-} from '../resource/schemas/resource.schema';
-import { OrderService } from '../order/order.service';
-import { Order, OrderSchema } from '../order/schemas/order.schema';
-import { InvoiceService } from '../invoice/invoice.service';
-import { Invoice, InvoiceSchema } from '../invoice/schemas/invoice.schema';
-import { AppointmentService } from '../appointment/appointment.service';
+  FakeResourceRepository,
+  fakeResourceServiceProviders,
+} from '../test-utils/fake-resource';
+import { fakeOrderServiceProviders } from '../test-utils/fake-order';
+import { fakeInvoiceServiceProviders } from '../test-utils/fake-invoice';
 import {
-  Appointment,
-  AppointmentSchema,
-} from '../appointment/schemas/appointment.schema';
-import { resolveTestUri } from '../test-utils/test-db';
+  FakeAppointmentRepository,
+  fakeAppointmentServiceProviders,
+} from '../test-utils/fake-appointment';
 import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
 import { MailService } from '../mail/mail.service';
 
-describe('SearchService (integration)', () => {
+describe('SearchService', () => {
   let moduleRef: TestingModule;
   let search: SearchService;
   let customers: CustomerService;
+  let customersFake: FakeCustomerRepository;
   let resources: ResourceService;
-  let customerModel: Model<CustomerDocument>;
-  let connection: Connection;
+  let resourcesFake: FakeResourceRepository;
+  let appointmentsFake: FakeAppointmentRepository;
 
   const businessA = 'biz-A';
 
   beforeAll(async () => {
-    const uri = resolveTestUri('search');
+    // Every searchable entity is Postgres-backed via in-memory fakes.
+    const fakeCustomers = fakeCustomerServiceProviders();
+    customersFake = fakeCustomers.customers;
+    const fakeResources = fakeResourceServiceProviders();
+    resourcesFake = fakeResources.resources;
+    const fakeOrders = fakeOrderServiceProviders();
+    const fakeInvoices = fakeInvoiceServiceProviders();
+    const fakeAppointments = fakeAppointmentServiceProviders();
+    appointmentsFake = fakeAppointments.appointments;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Customer.name, schema: CustomerSchema },
-          { name: Resource.name, schema: ResourceSchema },
-          { name: Order.name, schema: OrderSchema },
-          { name: Invoice.name, schema: InvoiceSchema },
-          { name: Appointment.name, schema: AppointmentSchema },
-        ]),
-      ],
       providers: [
         SearchService,
-        CustomerService,
-        ResourceService,
-        OrderService,
-        InvoiceService,
-        AppointmentService,
+        ...fakeCustomers.providers,
+        ...fakeResources.providers,
+        ...fakeOrders.providers,
+        ...fakeInvoices.providers,
+        ...fakeAppointments.providers,
         mockFileStorageProvider,
         { provide: MailService, useValue: { sendInvoice: jest.fn() } },
       ],
@@ -71,17 +59,15 @@ describe('SearchService (integration)', () => {
     search = moduleRef.get(SearchService);
     customers = moduleRef.get(CustomerService);
     resources = moduleRef.get(ResourceService);
-    customerModel = moduleRef.get(getModelToken(Customer.name));
-    connection = moduleRef.get<Connection>(getConnectionToken());
   });
 
-  beforeEach(async () => {
-    await connection.dropDatabase();
+  beforeEach(() => {
+    customersFake._clear();
+    resourcesFake._clear();
+    appointmentsFake._clear();
   });
 
   afterAll(async () => {
-    await connection.dropDatabase();
-    await connection.close();
     await moduleRef.close();
   });
 
@@ -94,7 +80,7 @@ describe('SearchService (integration)', () => {
     expect(results.appointments).toHaveLength(0);
   });
 
-  it('finds matches across customers and resources', async () => {
+  it('finds matches across customers, resources and appointments', async () => {
     await customers.create(businessA, { name: 'Acme Holdings' });
     await customers.create(businessA, { name: 'Other Co' });
     await resources.create(businessA, {
@@ -102,10 +88,19 @@ describe('SearchService (integration)', () => {
       name: 'Acme Widget',
       price: 9.99,
     });
+    await appointmentsFake.create({
+      businessId: businessA,
+      createdBy: 'user-1',
+      title: 'Acme kickoff',
+      start: new Date(Date.now() + 3600000),
+      end: new Date(Date.now() + 7200000),
+      invitees: [],
+    });
 
     const results = await search.search(businessA, 'acme');
     expect(results.customers).toHaveLength(1);
     expect(results.resources).toHaveLength(1);
+    expect(results.appointments).toHaveLength(1);
     expect((results.customers[0] as { name: string }).name).toBe(
       'Acme Holdings',
     );
@@ -121,7 +116,7 @@ describe('SearchService (integration)', () => {
 
   it('caps each group to 5 results', async () => {
     for (let i = 0; i < 8; i++) {
-      await customerModel.create({ businessId: businessA, name: `Match ${i}` });
+      await customers.create(businessA, { name: `Match ${i}` });
     }
     const results = await search.search(businessA, 'Match');
     expect(results.customers).toHaveLength(5);

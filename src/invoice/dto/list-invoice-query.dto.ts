@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
-import { InvoiceStatus } from '../schemas/invoice.schema';
+import { InvoiceStatus } from '../domain/invoice.entity';
 
 /** Query params for listing invoices: pagination/search plus status/customer. */
 export class ListInvoiceQueryDto extends PaginationQueryDto {

@@ -1,23 +1,21 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { createHash, randomUUID } from 'crypto';
 import appleSignin from 'apple-signin-auth';
 import * as argon2 from 'argon2';
-import { UserService } from '../user/user.service';
-import { UserDocument } from '../user/schemas/user.schema';
+import { UserServiceV2 } from '../user/application/user.service';
+import { IUser } from '../user/domain/user.entity';
+import { toUserResponse } from '../user/application/user.mapper';
 import { MailService } from '../mail/mail.service';
-import {
-  VerificationCode,
-  VerificationCodeDocument,
-} from './schemas/verification-code.schema';
+import { VERIFICATION_CODE_DATA_SOURCE } from './domain/verification-code.repository';
+import type { VerificationCodeRepository } from './domain/verification-code.repository';
 import { AuthResult, AuthTokens, JwtPayload } from './types/auth.types';
 
 const CODE_TTL_MINUTES = 10;
@@ -40,10 +38,10 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly userService: UserService,
+    private readonly userService: UserServiceV2,
     private readonly mailService: MailService,
-    @InjectModel(VerificationCode.name)
-    private readonly codeModel: Model<VerificationCodeDocument>,
+    @Inject(VERIFICATION_CODE_DATA_SOURCE)
+    private readonly codeRepository: VerificationCodeRepository,
   ) {
     this.googleClientId = this.configService.get<string>(
       'GOOGLE_CLIENT_ID',
@@ -88,13 +86,12 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  /** Build the standard auth response: tokens + the user (password stripped). */
-  private async buildAuthResult(user: UserDocument): Promise<AuthResult> {
-    const tokens = await this.issueTokens(String(user._id));
-    const safeUser = user.toObject() as unknown as Record<string, unknown>;
-    delete safeUser.password;
-    delete safeUser.hashedRefreshToken;
-    return { ...tokens, user: safeUser };
+  /** Build the standard auth response: tokens + the user (secrets stripped). */
+  private async buildAuthResult(user: IUser): Promise<AuthResult> {
+    const tokens = await this.issueTokens(user.id);
+    // toUserResponse drops password/hashedRefreshToken and maps id -> _id, so the
+    // auth response `user` keeps the same shape as the legacy Mongo response.
+    return { ...tokens, user: toUserResponse(user) };
   }
 
   /**
@@ -112,7 +109,7 @@ export class AuthService {
     // A returning deleted user within the 90-day window is reactivated before
     // tokens are issued; past the window this throws Forbidden and sign-in fails.
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
-      String(user._id),
+      user.id,
     );
     if (reactivated) {
       user.deleted = false;
@@ -139,8 +136,8 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
 
     // One active code per email: replace any existing one.
-    await this.codeModel.deleteMany({ email }).exec();
-    await this.codeModel.create({ email, code, expiresAt });
+    await this.codeRepository.deleteByEmail(email);
+    await this.codeRepository.create({ email, code, expiresAt });
 
     await this.mailService.sendVerificationCode(email, code, CODE_TTL_MINUTES);
 
@@ -153,7 +150,7 @@ export class AuthService {
    * Throws 400 if the code is missing, expired, or wrong.
    */
   async verifyEmailCode(email: string, code: string): Promise<AuthResult> {
-    const record = await this.codeModel.findOne({ email, code }).exec();
+    const record = await this.codeRepository.findByEmailAndCode(email, code);
 
     if (!record || record.expiresAt.getTime() < Date.now()) {
       throw new BadRequestException('Invalid or expired code.');
@@ -168,7 +165,7 @@ export class AuthService {
     // Reactivate a returning deleted user within the window before issuing
     // tokens; past the window this throws Forbidden and sign-in fails.
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
-      String(user._id),
+      user.id,
     );
     if (reactivated) {
       user.deleted = false;
@@ -176,11 +173,11 @@ export class AuthService {
     }
 
     const firstVerification = !user.isEmailVerified;
-    await this.userService.markEmailVerified(String(user._id));
+    await this.userService.markEmailVerified(user.id);
     user.isEmailVerified = true;
 
     // Code is single-use.
-    await this.codeModel.deleteMany({ email }).exec();
+    await this.codeRepository.deleteByEmail(email);
 
     if (firstVerification) {
       await this.mailService.sendWelcome(email, user.firstName);
@@ -226,7 +223,7 @@ export class AuthService {
     // Reactivate a returning deleted user (matched by email) within the window
     // before issuing tokens; past the window this throws Forbidden.
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
-      String(user._id),
+      user.id,
     );
     if (reactivated) {
       user.deleted = false;
@@ -294,7 +291,7 @@ export class AuthService {
     });
 
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
-      String(user._id),
+      user.id,
     );
     if (reactivated) {
       user.deleted = false;

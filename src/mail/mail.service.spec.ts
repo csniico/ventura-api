@@ -1,26 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
 import { MailService } from './mail.service';
+import { MailStatus, MailType } from './domain/mail.entity';
 import {
-  Mail,
-  MailDocument,
-  MailSchema,
-  MailStatus,
-  MailType,
-} from './schemas/mail.schema';
-import { resolveTestUri } from '../test-utils/test-db';
+  FakeMailRepository,
+  fakeMailRepositoryProvider,
+} from '../test-utils/fake-mail';
 
-describe('MailService (integration, real MongoDB, mocked Resend)', () => {
+describe('MailService (mocked Resend, in-memory record store)', () => {
   let moduleRef: TestingModule;
   let service: MailService;
-  let mailModel: Model<MailDocument>;
-  let connection: Connection;
+  let mails: FakeMailRepository;
 
   // Mock the Resend client's send so no real emails go out.
   type SendArg = { to: string; from: string; subject: string; html: string };
@@ -30,20 +20,15 @@ describe('MailService (integration, real MongoDB, mocked Resend)', () => {
   >;
 
   beforeAll(async () => {
-    const uri = resolveTestUri('mail');
+    const fakeMail = fakeMailRepositoryProvider();
+    mails = fakeMail.mails;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([{ name: Mail.name, schema: MailSchema }]),
-      ],
-      providers: [MailService],
+      imports: [ConfigModule.forRoot({ isGlobal: true })],
+      providers: [MailService, fakeMail.provider],
     }).compile();
 
     service = moduleRef.get<MailService>(MailService);
-    mailModel = moduleRef.get<Model<MailDocument>>(getModelToken(Mail.name));
-    connection = moduleRef.get<Connection>(getConnectionToken());
 
     // Replace the internal Resend client's emails.send with a mock.
     sendMock = jest.fn<
@@ -57,14 +42,12 @@ describe('MailService (integration, real MongoDB, mocked Resend)', () => {
       { emails: { send: sendMock } };
   });
 
-  beforeEach(async () => {
-    await mailModel.deleteMany({});
+  beforeEach(() => {
+    mails._clear();
     sendMock.mockReset();
   });
 
   afterAll(async () => {
-    await mailModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
@@ -87,9 +70,10 @@ describe('MailService (integration, real MongoDB, mocked Resend)', () => {
     expect(mail.type).toBe(MailType.VERIFICATION_CODE);
     expect(mail.providerId).toBe('re_123');
 
-    const fromDb = await mailModel.findById(mail._id).exec();
-    expect(fromDb?.to).toBe('user@example.com');
-    expect(fromDb?.status).toBe(MailStatus.SENT);
+    expect(mails._count()).toBe(1);
+    const stored = mails._all()[0];
+    expect(stored.to).toBe('user@example.com');
+    expect(stored.status).toBe(MailStatus.SENT);
   });
 
   it('records a failed send when Resend returns an error (without throwing)', async () => {

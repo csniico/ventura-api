@@ -10,7 +10,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
-import { ResourceType } from '../schemas/resource.schema';
+import { ResourceType } from '../domain/resource.entity';
 
 /**
  * Create a sellable resource. `type`, `name`, and `price` are required.

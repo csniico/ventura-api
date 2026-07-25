@@ -1,21 +1,30 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { UserModule } from '../user/user.module';
 import { OrderModule } from '../order/order.module';
 import { MailModule } from '../mail/mail.module';
-import { InvoiceService } from './invoice.service';
-import { InvoiceController } from './invoice.controller';
-import { Invoice, InvoiceSchema } from './schemas/invoice.schema';
+import { InvoiceService } from './application/invoice.service';
+import { InvoiceController } from './application/invoice.controller';
+import { PostgresInvoiceEntity } from './domain/postgres.invoice-entity';
+import { INVOICE_DATA_SOURCE } from './domain/invoice.repository';
+import { PostgresInvoiceRepository } from './infrastructure/postgres-invoice.repository';
 
 @Module({
   imports: [
     UserModule,
     OrderModule,
     MailModule,
-    MongooseModule.forFeature([{ name: Invoice.name, schema: InvoiceSchema }]),
+    MikroOrmModule.forFeature([PostgresInvoiceEntity]),
   ],
   controllers: [InvoiceController],
-  providers: [InvoiceService],
+  providers: [
+    InvoiceService,
+    PostgresInvoiceRepository,
+    {
+      provide: INVOICE_DATA_SOURCE,
+      useClass: PostgresInvoiceRepository,
+    },
+  ],
   exports: [InvoiceService],
 })
 export class InvoiceModule {}

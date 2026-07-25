@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ResourceType } from '../../resource/schemas/resource.schema';
-import { OrderStatus } from '../schemas/order.schema';
+import { ResourceType } from '../../resource/domain/resource.entity';
+import { OrderStatus } from '../domain/order.entity';
 
 /** A line item on an order, with a snapshot of the resource at order time. */
 export class OrderItemResponse {

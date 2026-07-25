@@ -1,3 +1,5 @@
+import { UserResponse } from '../../user/responses/user.response';
+
 /** Claims carried in the JWT (kept minimal: subject = userId). */
 export interface JwtPayload {
   sub: string;
@@ -16,5 +18,5 @@ export interface AuthTokens {
 
 /** Full auth response: tokens plus the authenticated user (no secrets). */
 export interface AuthResult extends AuthTokens {
-  user: Record<string, unknown>;
+  user: UserResponse;
 }

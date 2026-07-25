@@ -6,7 +6,7 @@ import {
   IsOptional,
   Min,
 } from 'class-validator';
-import { PaymentMethod } from '../schemas/invoice.schema';
+import { PaymentMethod } from '../domain/invoice.entity';
 
 /** Record a payment against an invoice. */
 export class RecordPaymentDto {

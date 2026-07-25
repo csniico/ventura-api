@@ -1,37 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { UserService } from '../user/user.service';
-import { Customer, CustomerDocument } from '../customer/schemas/customer.schema';
-import { Resource, ResourceDocument } from '../resource/schemas/resource.schema';
-import { Order, OrderDocument } from '../order/schemas/order.schema';
-import { Invoice, InvoiceDocument } from '../invoice/schemas/invoice.schema';
-import {
-  Appointment,
-  AppointmentDocument,
-} from '../appointment/schemas/appointment.schema';
+import { UserServiceV2 } from '../user/application/user.service';
+import { CustomerService } from '../customer/application/customer.service';
+import { ResourceService } from '../resource/application/resource.service';
+import { OrderService } from '../order/application/order.service';
+import { InvoiceService } from '../invoice/application/invoice.service';
+import { AppointmentService } from '../appointment/application/appointment.service';
 import { SetupStatusResponse } from './responses/setup-status.response';
 
 /**
  * Reports first-run setup progress for the guided "getting started" flow.
- * Resolves the caller's business from their user doc and checks for the
- * existence of each entity. Works before a business exists (all false), so the
- * client can call it without tripping the business-required 403 on the lists.
+ * Resolves the caller's business from their user, then checks each entity for
+ * existence. All entities are now Postgres-backed (queried through their owning
+ * services). Works before a business exists (all false), so the client can call
+ * it without tripping the business-required 403 on the lists.
  */
 @Injectable()
 export class SetupService {
   constructor(
-    private readonly userService: UserService,
-    @InjectModel(Customer.name)
-    private readonly customerModel: Model<CustomerDocument>,
-    @InjectModel(Resource.name)
-    private readonly resourceModel: Model<ResourceDocument>,
-    @InjectModel(Order.name)
-    private readonly orderModel: Model<OrderDocument>,
-    @InjectModel(Invoice.name)
-    private readonly invoiceModel: Model<InvoiceDocument>,
-    @InjectModel(Appointment.name)
-    private readonly appointmentModel: Model<AppointmentDocument>,
+    private readonly userService: UserServiceV2,
+    private readonly customerService: CustomerService,
+    private readonly resourceService: ResourceService,
+    private readonly orderService: OrderService,
+    private readonly invoiceService: InvoiceService,
+    private readonly appointmentService: AppointmentService,
   ) {}
 
   async getStatus(userId: string): Promise<SetupStatusResponse> {
@@ -50,17 +41,32 @@ export class SetupService {
       };
     }
 
-    const exists = async (model: Model<{ businessId?: string }>) =>
-      !!(await model.exists({ businessId }));
+    const customerExists = async () =>
+      (await this.customerService.list(businessId, { limit: 1 })).meta.total >
+      0;
+    const resourceExists = async () =>
+      (await this.resourceService.list(businessId, { limit: 1 })).meta.total >
+      0;
+    const orderExists = async () =>
+      (await this.orderService.list(businessId, { limit: 1 })).meta.total > 0;
+    const invoiceExists = async () =>
+      (await this.invoiceService.list(businessId, { limit: 1 })).meta.total > 0;
+    const appointmentExists = async () =>
+      (await this.appointmentService.list(businessId)).length > 0;
 
-    const [hasCustomers, hasResources, hasOrders, hasInvoices, hasAppointments] =
-      await Promise.all([
-        exists(this.customerModel),
-        exists(this.resourceModel),
-        exists(this.orderModel),
-        exists(this.invoiceModel),
-        exists(this.appointmentModel),
-      ]);
+    const [
+      hasCustomers,
+      hasResources,
+      hasOrders,
+      hasInvoices,
+      hasAppointments,
+    ] = await Promise.all([
+      customerExists(),
+      resourceExists(),
+      orderExists(),
+      invoiceExists(),
+      appointmentExists(),
+    ]);
 
     return {
       hasBusiness: true,

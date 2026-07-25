@@ -7,7 +7,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { InvoiceType } from '../schemas/invoice.schema';
+import { InvoiceType } from '../domain/invoice.entity';
 
 /** Create an invoice from one or more existing orders. */
 export class CreateInvoiceDto {

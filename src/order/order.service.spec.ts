@@ -1,67 +1,58 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
-import {
   BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { Connection, Model } from 'mongoose';
 
-import { OrderService } from './order.service';
+import { OrderService } from './application/order.service';
+import { OrderStatus } from './domain/order.entity';
+import { CustomerService } from '../customer/application/customer.service';
 import {
-  Order,
-  OrderDocument,
-  OrderSchema,
-  OrderStatus,
-} from './schemas/order.schema';
-import { CustomerService } from '../customer/customer.service';
+  FakeCustomerRepository,
+  fakeCustomerServiceProviders,
+} from '../test-utils/fake-customer';
+import { ResourceService } from '../resource/application/resource.service';
+import { ResourceType } from '../resource/domain/resource.entity';
 import {
-  Customer,
-  CustomerDocument,
-  CustomerSchema,
-} from '../customer/schemas/customer.schema';
-import { ResourceService } from '../resource/resource.service';
+  FakeResourceRepository,
+  fakeResourceServiceProviders,
+} from '../test-utils/fake-resource';
 import {
-  Resource,
-  ResourceDocument,
-  ResourceSchema,
-  ResourceType,
-} from '../resource/schemas/resource.schema';
+  FakeOrderRepository,
+  fakeOrderServiceProviders,
+} from '../test-utils/fake-order';
 import { FileStorageService } from '../file-storage/file-storage.service';
-import { resolveTestUri } from '../test-utils/test-db';
 
-describe('OrderService (integration)', () => {
+/**
+ * Behavioural spec for the Postgres-backed OrderService, run against in-memory
+ * fakes of the order/customer/resource repositories. The real SQL path (jsonb
+ * items, atomic stock, topProducts) is covered by the live smoke test.
+ */
+describe('OrderService (behavioural, fake repositories)', () => {
   let moduleRef: TestingModule;
   let orders: OrderService;
+  let ordersFake: FakeOrderRepository;
   let customers: CustomerService;
+  let customersFake: FakeCustomerRepository;
   let resources: ResourceService;
-  let orderModel: Model<OrderDocument>;
-  let customerModel: Model<CustomerDocument>;
-  let resourceModel: Model<ResourceDocument>;
-  let connection: Connection;
+  let resourcesFake: FakeResourceRepository;
 
   const businessA = 'biz-A';
 
   beforeAll(async () => {
-    const uri = resolveTestUri('order');
+    const fakeOrders = fakeOrderServiceProviders();
+    ordersFake = fakeOrders.orders;
+    const fakeCustomers = fakeCustomerServiceProviders();
+    customersFake = fakeCustomers.customers;
+    const fakeResources = fakeResourceServiceProviders();
+    resourcesFake = fakeResources.resources;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Order.name, schema: OrderSchema },
-          { name: Customer.name, schema: CustomerSchema },
-          { name: Resource.name, schema: ResourceSchema },
-        ]),
-      ],
       providers: [
-        OrderService,
-        CustomerService,
-        ResourceService,
+        ...fakeOrders.providers,
+        ...fakeCustomers.providers,
+        ...fakeResources.providers,
         {
           provide: FileStorageService,
           useValue: { deleteFile: jest.fn().mockResolvedValue(undefined) },
@@ -72,33 +63,21 @@ describe('OrderService (integration)', () => {
     orders = moduleRef.get(OrderService);
     customers = moduleRef.get(CustomerService);
     resources = moduleRef.get(ResourceService);
-    orderModel = moduleRef.get<Model<OrderDocument>>(getModelToken(Order.name));
-    customerModel = moduleRef.get<Model<CustomerDocument>>(
-      getModelToken(Customer.name),
-    );
-    resourceModel = moduleRef.get<Model<ResourceDocument>>(
-      getModelToken(Resource.name),
-    );
-    connection = moduleRef.get<Connection>(getConnectionToken());
   });
 
-  beforeEach(async () => {
-    await orderModel.deleteMany({});
-    await customerModel.deleteMany({});
-    await resourceModel.deleteMany({});
+  beforeEach(() => {
+    ordersFake._clear();
+    customersFake._clear();
+    resourcesFake._clear();
   });
 
   afterAll(async () => {
-    await orderModel.deleteMany({});
-    await customerModel.deleteMany({});
-    await resourceModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
   async function seedCustomer() {
     const c = await customers.create(businessA, { name: 'Ada' });
-    return String(c._id);
+    return c.id;
   }
   async function seedProduct(qty: number, price = 10) {
     const p = await resources.create(businessA, {
@@ -107,7 +86,7 @@ describe('OrderService (integration)', () => {
       price,
       availableQuantity: qty,
     });
-    return String(p._id);
+    return p.id;
   }
   async function seedService(price = 50) {
     const s = await resources.create(businessA, {
@@ -115,7 +94,7 @@ describe('OrderService (integration)', () => {
       name: 'Haircut',
       price,
     });
-    return String(s._id);
+    return s.id;
   }
 
   describe('create', () => {
@@ -136,7 +115,7 @@ describe('OrderService (integration)', () => {
       expect(order.items[0].subTotal).toBe(30);
 
       // Stock decremented 10 -> 7.
-      const product = await resourceModel.findById(productId).exec();
+      const product = resourcesFake._get(productId);
       expect(product?.availableQuantity).toBe(7);
     });
 
@@ -162,9 +141,9 @@ describe('OrderService (integration)', () => {
         }),
       ).rejects.toBeInstanceOf(ConflictException);
 
-      const product = await resourceModel.findById(productId).exec();
+      const product = resourcesFake._get(productId);
       expect(product?.availableQuantity).toBe(2);
-      expect(await orderModel.countDocuments()).toBe(0);
+      expect(ordersFake._count()).toBe(0);
     });
 
     it('rolls back earlier decrements when a later item is short', async () => {
@@ -183,7 +162,7 @@ describe('OrderService (integration)', () => {
       ).rejects.toBeInstanceOf(ConflictException);
 
       // The first product's stock was restored.
-      const okProduct = await resourceModel.findById(ok).exec();
+      const okProduct = resourcesFake._get(ok);
       expect(okProduct?.availableQuantity).toBe(10);
     });
 
@@ -206,11 +185,7 @@ describe('OrderService (integration)', () => {
         customerId,
         items: [{ resourceId: productId, quantity: 1 }],
       });
-      await orders.updateStatus(
-        businessA,
-        String(o1._id),
-        OrderStatus.COMPLETED,
-      );
+      await orders.updateStatus(businessA, o1.id, OrderStatus.COMPLETED);
       await orders.create(businessA, {
         customerId,
         items: [{ resourceId: productId, quantity: 1 }],
@@ -276,13 +251,9 @@ describe('OrderService (integration)', () => {
         items: [{ resourceId: productId, quantity: 4 }],
       });
       // 10 -> 6 after order.
-      await orders.updateStatus(
-        businessA,
-        String(order._id),
-        OrderStatus.CANCELLED,
-      );
+      await orders.updateStatus(businessA, order.id, OrderStatus.CANCELLED);
 
-      const product = await resourceModel.findById(productId).exec();
+      const product = resourcesFake._get(productId);
       expect(product?.availableQuantity).toBe(10);
     });
 
@@ -293,18 +264,10 @@ describe('OrderService (integration)', () => {
         customerId,
         items: [{ resourceId: productId, quantity: 1 }],
       });
-      await orders.updateStatus(
-        businessA,
-        String(order._id),
-        OrderStatus.CANCELLED,
-      );
+      await orders.updateStatus(businessA, order.id, OrderStatus.CANCELLED);
 
       await expect(
-        orders.updateStatus(
-          businessA,
-          String(order._id),
-          OrderStatus.COMPLETED,
-        ),
+        orders.updateStatus(businessA, order.id, OrderStatus.COMPLETED),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
@@ -319,12 +282,12 @@ describe('OrderService (integration)', () => {
       });
       // 10 -> 7 after create.
 
-      const updated = await orders.updateItems(businessA, String(order._id), [
+      const updated = await orders.updateItems(businessA, order.id, [
         { resourceId: productId, quantity: 5 },
       ]);
 
       expect(updated.items[0].quantity).toBe(5);
-      const product = await resourceModel.findById(productId).exec();
+      const product = resourcesFake._get(productId);
       // delta +2 decremented: 7 -> 5.
       expect(product?.availableQuantity).toBe(5);
     });
@@ -338,11 +301,11 @@ describe('OrderService (integration)', () => {
       });
       // 10 -> 5 after create.
 
-      await orders.updateItems(businessA, String(order._id), [
+      await orders.updateItems(businessA, order.id, [
         { resourceId: productId, quantity: 2 },
       ]);
 
-      const product = await resourceModel.findById(productId).exec();
+      const product = resourcesFake._get(productId);
       // delta -3 restored: 5 -> 8.
       expect(product?.availableQuantity).toBe(8);
     });
@@ -356,13 +319,13 @@ describe('OrderService (integration)', () => {
         items: [{ resourceId: productA, quantity: 2 }],
       });
 
-      await orders.updateItems(businessA, String(order._id), [
+      await orders.updateItems(businessA, order.id, [
         { resourceId: productA, quantity: 2 },
         { resourceId: productB, quantity: 4 },
       ]);
 
-      const pA = await resourceModel.findById(productA).exec();
-      const pB = await resourceModel.findById(productB).exec();
+      const pA = resourcesFake._get(productA);
+      const pB = resourcesFake._get(productB);
       expect(pA?.availableQuantity).toBe(8); // unchanged
       expect(pB?.availableQuantity).toBe(6); // 10 -> 6
     });
@@ -380,12 +343,12 @@ describe('OrderService (integration)', () => {
       });
       // A: 10->8, B: 10->6.
 
-      await orders.updateItems(businessA, String(order._id), [
+      await orders.updateItems(businessA, order.id, [
         { resourceId: productA, quantity: 2 },
       ]);
 
-      const pA = await resourceModel.findById(productA).exec();
-      const pB = await resourceModel.findById(productB).exec();
+      const pA = resourcesFake._get(productA);
+      const pB = resourcesFake._get(productB);
       expect(pA?.availableQuantity).toBe(8); // unchanged
       expect(pB?.availableQuantity).toBe(10); // fully restored
     });
@@ -400,7 +363,7 @@ describe('OrderService (integration)', () => {
       });
       expect(order.totalAmount).toBe(10);
 
-      const updated = await orders.updateItems(businessA, String(order._id), [
+      const updated = await orders.updateItems(businessA, order.id, [
         { resourceId: productId, quantity: 2 },
         { resourceId: serviceId, quantity: 3 },
       ]);
@@ -416,14 +379,10 @@ describe('OrderService (integration)', () => {
         customerId,
         items: [{ resourceId: productId, quantity: 1 }],
       });
-      await orders.updateStatus(
-        businessA,
-        String(order._id),
-        OrderStatus.COMPLETED,
-      );
+      await orders.updateStatus(businessA, order.id, OrderStatus.COMPLETED);
 
       await expect(
-        orders.updateItems(businessA, String(order._id), [
+        orders.updateItems(businessA, order.id, [
           { resourceId: productId, quantity: 2 },
         ]),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -439,12 +398,12 @@ describe('OrderService (integration)', () => {
       // 5 -> 2 after create.
 
       await expect(
-        orders.updateItems(businessA, String(order._id), [
+        orders.updateItems(businessA, order.id, [
           { resourceId: productId, quantity: 10 },
         ]),
       ).rejects.toBeInstanceOf(ConflictException);
 
-      const product = await resourceModel.findById(productId).exec();
+      const product = resourcesFake._get(productId);
       // delta +7 needed but only 2 available -> unchanged at 2.
       expect(product?.availableQuantity).toBe(2);
     });

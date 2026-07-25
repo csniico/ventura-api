@@ -12,7 +12,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { RecurrenceFrequency } from '../schemas/appointment.schema';
+import { RecurrenceFrequency } from '../domain/appointment.entity';
 
 export class InviteeDto {
   @ApiProperty({ example: 'Ada Lovelace' })

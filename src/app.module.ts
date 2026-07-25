@@ -1,7 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -19,6 +18,8 @@ import { SearchModule } from './search/search.module';
 import { SetupModule } from './setup/setup.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 
 @Module({
   imports: [
@@ -31,13 +32,27 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
       delimiter: '.',
       maxListeners: 10,
     }),
-    MongooseModule.forRootAsync({
-      useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>(
-          'MONGODB_URI',
-          'mongodb://localhost:27017/ventura',
-        ),
-      }),
+    MikroOrmModule.forRootAsync({
+      driver: PostgreSqlDriver,
+      useFactory: (configService: ConfigService) => {
+        const host = configService.get<string>('PG_HOST', 'localhost');
+        const password = configService.get<string>(
+          'PG_PASSWORD',
+          'adminUser!234',
+        );
+        const dbName = configService.get<string>('PG_DBNAME', 'ventura_dev');
+        const user = configService.get<string>('PG_USER', 'postgres');
+        return {
+          driver: PostgreSqlDriver,
+          dbName: dbName,
+          user: user,
+          password: password,
+          host: host,
+          port: 5432,
+          autoLoadEntities: true,
+          schema: 'public',
+        };
+      },
       inject: [ConfigService],
     }),
     UserModule,

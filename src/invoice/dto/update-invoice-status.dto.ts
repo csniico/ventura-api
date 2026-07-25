@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum } from 'class-validator';
-import { InvoiceStatus } from '../schemas/invoice.schema';
+import { InvoiceStatus } from '../domain/invoice.entity';
 
 export class UpdateInvoiceStatusDto {
   @ApiProperty({ enum: InvoiceStatus })

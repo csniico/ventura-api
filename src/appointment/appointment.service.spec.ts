@@ -1,34 +1,27 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Connection, Model, Types } from 'mongoose';
 
-import { AppointmentService } from './appointment.service';
+import { AppointmentService } from './application/appointment.service';
 import {
-  Appointment,
-  AppointmentDocument,
-  AppointmentSchema,
+  AppointmentStatus,
   RecurrenceFrequency,
-} from './schemas/appointment.schema';
-import { CustomerService } from '../customer/customer.service';
+} from './domain/appointment.entity';
+import { CustomerService } from '../customer/application/customer.service';
 import {
-  Customer,
-  CustomerDocument,
-  CustomerSchema,
-} from '../customer/schemas/customer.schema';
-import { resolveTestUri } from '../test-utils/test-db';
+  FakeCustomerRepository,
+  fakeCustomerServiceProviders,
+} from '../test-utils/fake-customer';
+import {
+  FakeAppointmentRepository,
+  fakeAppointmentServiceProviders,
+} from '../test-utils/fake-appointment';
 
-describe('AppointmentService (integration)', () => {
+describe('AppointmentService', () => {
   let moduleRef: TestingModule;
   let service: AppointmentService;
   let customers: CustomerService;
-  let appointmentModel: Model<AppointmentDocument>;
-  let customerModel: Model<CustomerDocument>;
-  let connection: Connection;
+  let customersFake: FakeCustomerRepository;
+  let appointmentsFake: FakeAppointmentRepository;
 
   const businessId = 'biz-appt';
   const createdBy = 'user-1';
@@ -36,39 +29,25 @@ describe('AppointmentService (integration)', () => {
     new Date(Date.now() + mins * 60000).toISOString();
 
   beforeAll(async () => {
-    const uri = resolveTestUri('appointment');
+    const fakeCustomers = fakeCustomerServiceProviders();
+    customersFake = fakeCustomers.customers;
+    const fakeAppointments = fakeAppointmentServiceProviders();
+    appointmentsFake = fakeAppointments.appointments;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Appointment.name, schema: AppointmentSchema },
-          { name: Customer.name, schema: CustomerSchema },
-        ]),
-      ],
-      providers: [AppointmentService, CustomerService],
+      providers: [...fakeAppointments.providers, ...fakeCustomers.providers],
     }).compile();
 
     service = moduleRef.get(AppointmentService);
     customers = moduleRef.get(CustomerService);
-    appointmentModel = moduleRef.get<Model<AppointmentDocument>>(
-      getModelToken(Appointment.name),
-    );
-    customerModel = moduleRef.get<Model<CustomerDocument>>(
-      getModelToken(Customer.name),
-    );
-    connection = moduleRef.get<Connection>(getConnectionToken());
   });
 
-  beforeEach(async () => {
-    await appointmentModel.deleteMany({});
-    await customerModel.deleteMany({});
+  beforeEach(() => {
+    appointmentsFake._clear();
+    customersFake._clear();
   });
 
   afterAll(async () => {
-    await appointmentModel.deleteMany({});
-    await customerModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
@@ -113,7 +92,7 @@ describe('AppointmentService (integration)', () => {
         title: 'With customer',
         start: future(60),
         end: future(120),
-        invitees: [{ name: 'Ada', customerId: String(customer._id) }],
+        invitees: [{ name: 'Ada', customerId: customer.id }],
       });
       expect(appt.invitees).toHaveLength(1);
     });
@@ -129,13 +108,12 @@ describe('AppointmentService (integration)', () => {
     });
 
     it('rejects an invitee referencing a customer not in the business', async () => {
-      const missing = new Types.ObjectId().toString();
       await expect(
         service.create(businessId, createdBy, {
           title: 'Bad invitee',
           start: future(60),
           end: future(120),
-          invitees: [{ name: 'Ghost', customerId: missing }],
+          invitees: [{ name: 'Ghost', customerId: 'missing-customer-id' }],
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
@@ -171,8 +149,53 @@ describe('AppointmentService (integration)', () => {
         end: future(120),
       });
       await expect(
-        service.getById('other-biz', String(appt._id)),
+        service.getById('other-biz', appt.id),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('search', () => {
+    it('finds a business appointment by title, soonest first', async () => {
+      await service.create(businessId, createdBy, {
+        title: 'Dentist checkup',
+        start: future(180),
+        end: future(200),
+      });
+      await service.create(businessId, createdBy, {
+        title: 'Dentist cleaning',
+        start: future(60),
+        end: future(90),
+      });
+      const results = await service.search(businessId, 'dentist');
+      expect(results.map((a) => a.title)).toEqual([
+        'Dentist cleaning',
+        'Dentist checkup',
+      ]);
+    });
+
+    it('returns nothing for an empty query', async () => {
+      await service.create(businessId, createdBy, {
+        title: 'Anything',
+        start: future(60),
+        end: future(90),
+      });
+      expect(await service.search(businessId, '   ')).toEqual([]);
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('sets the status of a business appointment', async () => {
+      const appt = await service.create(businessId, createdBy, {
+        title: 'Track me',
+        start: future(60),
+        end: future(120),
+      });
+      const updated = await service.updateStatus(
+        businessId,
+        appt.id,
+        AppointmentStatus.COMPLETED,
+      );
+      expect(updated.status).toBe(AppointmentStatus.COMPLETED);
     });
   });
 
@@ -185,7 +208,7 @@ describe('AppointmentService (integration)', () => {
         recurrence: { frequency: RecurrenceFrequency.DAILY },
       });
 
-      const updated = await service.update(businessId, String(appt._id), {
+      const updated = await service.update(businessId, appt.id, {
         title: 'No longer repeats',
         clearRecurrence: true,
       });
@@ -200,7 +223,7 @@ describe('AppointmentService (integration)', () => {
         end: future(120),
       });
       await expect(
-        service.update(businessId, String(appt._id), { end: future(30) }),
+        service.update(businessId, appt.id, { end: future(30) }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -210,8 +233,8 @@ describe('AppointmentService (integration)', () => {
         start: future(60),
         end: future(120),
       });
-      await service.delete(businessId, String(appt._id));
-      expect(await appointmentModel.countDocuments()).toBe(0);
+      await service.delete(businessId, appt.id);
+      expect(appointmentsFake._count()).toBe(0);
     });
 
     it('cannot delete an appointment from another business', async () => {
@@ -220,9 +243,9 @@ describe('AppointmentService (integration)', () => {
         start: future(60),
         end: future(120),
       });
-      await expect(
-        service.delete('other-biz', String(appt._id)),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.delete('other-biz', appt.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

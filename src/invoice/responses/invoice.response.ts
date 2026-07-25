@@ -3,7 +3,7 @@ import {
   InvoiceStatus,
   InvoiceType,
   PaymentMethod,
-} from '../schemas/invoice.schema';
+} from '../domain/invoice.entity';
 
 /** Public shape of an Invoice returned by the API. */
 export class InvoiceResponse {

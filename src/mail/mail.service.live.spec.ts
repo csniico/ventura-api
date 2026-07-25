@@ -1,25 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
 import * as dotenv from 'dotenv';
 import { MailService } from './mail.service';
-import {
-  Mail,
-  MailDocument,
-  MailSchema,
-  MailStatus,
-} from './schemas/mail.schema';
-import { resolveTestUri } from '../test-utils/test-db';
+import { MailStatus } from './domain/mail.entity';
+import { fakeMailRepositoryProvider } from '../test-utils/fake-mail';
 
 dotenv.config();
 
 /**
  * LIVE mail spec — actually sends emails via Resend to MAIL_TEST_RECIPIENT.
+ * Only the send path is real; the persistence uses an in-memory fake repo.
  *
  * Requires an explicit opt-in so it never runs in CI or the default
  * `pnpm jest` (even with MAIL_TEST_RECIPIENT sitting in .env). Both must be set:
@@ -37,29 +27,19 @@ const describeLive = liveEnabled ? describe : describe.skip;
 describeLive('MailService (LIVE — really sends via Resend)', () => {
   let moduleRef: TestingModule;
   let service: MailService;
-  let mailModel: Model<MailDocument>;
-  let connection: Connection;
 
   beforeAll(async () => {
-    const uri = resolveTestUri('mail_live');
+    const fakeMail = fakeMailRepositoryProvider();
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([{ name: Mail.name, schema: MailSchema }]),
-      ],
-      providers: [MailService],
+      imports: [ConfigModule.forRoot({ isGlobal: true })],
+      providers: [MailService, fakeMail.provider],
     }).compile();
 
     service = moduleRef.get<MailService>(MailService);
-    mailModel = moduleRef.get<Model<MailDocument>>(getModelToken(Mail.name));
-    connection = moduleRef.get<Connection>(getConnectionToken());
   });
 
   afterAll(async () => {
-    await mailModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 

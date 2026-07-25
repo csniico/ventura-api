@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { MailService } from './mail.service';
-import { Mail, MailSchema } from './schemas/mail.schema';
+import { PostgresMailEntity } from './domain/postgres.mail-entity';
+import { MAIL_DATA_SOURCE } from './domain/mail.repository';
+import { PostgresMailRepository } from './infrastructure/postgres-mail.repository';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: Mail.name, schema: MailSchema }]),
+  imports: [MikroOrmModule.forFeature([PostgresMailEntity])],
+  providers: [
+    MailService,
+    { provide: MAIL_DATA_SOURCE, useClass: PostgresMailRepository },
   ],
-  providers: [MailService],
   exports: [MailService],
 })
 export class MailModule {}

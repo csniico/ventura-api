@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ResourceType } from '../schemas/resource.schema';
+import { ResourceType } from '../domain/resource.entity';
 
 /** Public shape of a Resource returned by the API. */
 export class ResourceResponse {
