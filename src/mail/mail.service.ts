@@ -1,14 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { Resend } from 'resend';
-import {
-  Mail,
-  MailDocument,
-  MailStatus,
-  MailType,
-} from './schemas/mail.schema';
+import { IMail, MailStatus, MailType } from './domain/mail.entity';
+import { MAIL_DATA_SOURCE } from './domain/mail.repository';
+import type { MailRepository } from './domain/mail.repository';
 import {
   EmailContent,
   accountDeletedEmail,
@@ -27,8 +22,8 @@ export class MailService {
   private readonly fromEmail: string;
 
   constructor(
-    @InjectModel(Mail.name)
-    private readonly mailModel: Model<MailDocument>,
+    @Inject(MAIL_DATA_SOURCE)
+    private readonly mailRepository: MailRepository,
     private readonly configService: ConfigService,
   ) {
     this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
@@ -47,7 +42,7 @@ export class MailService {
     to: string,
     type: MailType,
     content: EmailContent,
-  ): Promise<MailDocument> {
+  ): Promise<IMail> {
     let status = MailStatus.SENT;
     let providerId: string | null = null;
     let error: string | null = null;
@@ -72,7 +67,7 @@ export class MailService {
       this.logger.error(`Failed to send ${type} to ${to}: ${error}`);
     }
 
-    return this.mailModel.create({
+    return this.mailRepository.create({
       to,
       from: this.fromEmail,
       subject: content.subject,
@@ -88,7 +83,7 @@ export class MailService {
     to: string,
     code: string,
     expirationMinutes = 10,
-  ): Promise<MailDocument> {
+  ): Promise<IMail> {
     return this.send(
       to,
       MailType.VERIFICATION_CODE,
@@ -97,15 +92,12 @@ export class MailService {
   }
 
   /** Welcome a brand-new user. */
-  async sendWelcome(to: string, firstName: string): Promise<MailDocument> {
+  async sendWelcome(to: string, firstName: string): Promise<IMail> {
     return this.send(to, MailType.WELCOME, welcomeEmail(firstName));
   }
 
   /** Notify when a sign-up is attempted for an already-registered email. */
-  async sendExistingUserSignin(
-    to: string,
-    firstName: string,
-  ): Promise<MailDocument> {
+  async sendExistingUserSignin(to: string, firstName: string): Promise<IMail> {
     return this.send(
       to,
       MailType.EXISTING_USER_SIGNIN,
@@ -121,7 +113,7 @@ export class MailService {
     to: string,
     firstName: string,
     graceDays = 90,
-  ): Promise<MailDocument> {
+  ): Promise<IMail> {
     return this.send(
       to,
       MailType.ACCOUNT_DELETED,
@@ -133,7 +125,7 @@ export class MailService {
   async sendPasswordChangeRequested(
     to: string,
     firstName: string,
-  ): Promise<MailDocument> {
+  ): Promise<IMail> {
     return this.send(
       to,
       MailType.PASSWORD_CHANGE_REQUESTED,
@@ -142,10 +134,7 @@ export class MailService {
   }
 
   /** Security notice that a password was set or changed. */
-  async sendPasswordChanged(
-    to: string,
-    firstName: string,
-  ): Promise<MailDocument> {
+  async sendPasswordChanged(to: string, firstName: string): Promise<IMail> {
     return this.send(
       to,
       MailType.PASSWORD_CHANGED,
@@ -162,7 +151,7 @@ export class MailService {
       totalAmount: number;
       message?: string | null;
     },
-  ): Promise<MailDocument> {
+  ): Promise<IMail> {
     return this.send(to, MailType.INVOICE, invoiceEmail(args));
   }
 }

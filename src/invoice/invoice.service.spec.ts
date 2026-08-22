@@ -1,80 +1,70 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
-import {
   BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { Connection, Model } from 'mongoose';
 
-import { InvoiceService } from './invoice.service';
+import { InvoiceService } from './application/invoice.service';
+import { InvoiceStatus, PaymentMethod } from './domain/invoice.entity';
 import {
-  Invoice,
-  InvoiceDocument,
-  InvoiceSchema,
-  InvoiceStatus,
-  PaymentMethod,
-} from './schemas/invoice.schema';
-import { OrderService } from '../order/order.service';
+  FakeInvoiceRepository,
+  fakeInvoiceServiceProviders,
+} from '../test-utils/fake-invoice';
+import { OrderService } from '../order/application/order.service';
 import {
-  Order,
-  OrderDocument,
-  OrderSchema,
-} from '../order/schemas/order.schema';
-import { CustomerService } from '../customer/customer.service';
+  FakeOrderRepository,
+  fakeOrderServiceProviders,
+} from '../test-utils/fake-order';
+import { CustomerService } from '../customer/application/customer.service';
 import {
-  Customer,
-  CustomerDocument,
-  CustomerSchema,
-} from '../customer/schemas/customer.schema';
-import { ResourceService } from '../resource/resource.service';
+  FakeCustomerRepository,
+  fakeCustomerServiceProviders,
+} from '../test-utils/fake-customer';
+import { ResourceService } from '../resource/application/resource.service';
+import { ResourceType } from '../resource/domain/resource.entity';
 import {
-  Resource,
-  ResourceDocument,
-  ResourceSchema,
-  ResourceType,
-} from '../resource/schemas/resource.schema';
+  FakeResourceRepository,
+  fakeResourceServiceProviders,
+} from '../test-utils/fake-resource';
 import { MailService } from '../mail/mail.service';
 import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
-import { resolveTestUri } from '../test-utils/test-db';
 
-describe('InvoiceService (integration)', () => {
+/**
+ * Behavioural spec for the Postgres-backed InvoiceService, run against in-memory
+ * fakes of the invoice/order/customer/resource repositories. The real SQL path
+ * (ILIKE search, revenue aggregations) is covered by the live smoke test.
+ */
+describe('InvoiceService (behavioural, fake repositories)', () => {
   let moduleRef: TestingModule;
   let invoices: InvoiceService;
+  let invoicesFake: FakeInvoiceRepository;
   let orders: OrderService;
+  let ordersFake: FakeOrderRepository;
   let customers: CustomerService;
+  let customersFake: FakeCustomerRepository;
   let resources: ResourceService;
-  let invoiceModel: Model<InvoiceDocument>;
-  let orderModel: Model<OrderDocument>;
-  let customerModel: Model<CustomerDocument>;
-  let resourceModel: Model<ResourceDocument>;
-  let connection: Connection;
+  let resourcesFake: FakeResourceRepository;
   const sendInvoice = jest.fn();
 
   const businessA = 'biz-A';
 
   beforeAll(async () => {
-    const uri = resolveTestUri('invoice');
+    const fakeInvoices = fakeInvoiceServiceProviders();
+    invoicesFake = fakeInvoices.invoices;
+    const fakeCustomers = fakeCustomerServiceProviders();
+    customersFake = fakeCustomers.customers;
+    const fakeResources = fakeResourceServiceProviders();
+    resourcesFake = fakeResources.resources;
+    const fakeOrders = fakeOrderServiceProviders();
+    ordersFake = fakeOrders.orders;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Invoice.name, schema: InvoiceSchema },
-          { name: Order.name, schema: OrderSchema },
-          { name: Customer.name, schema: CustomerSchema },
-          { name: Resource.name, schema: ResourceSchema },
-        ]),
-      ],
       providers: [
-        InvoiceService,
-        OrderService,
-        CustomerService,
-        ResourceService,
+        ...fakeInvoices.providers,
+        ...fakeOrders.providers,
+        ...fakeCustomers.providers,
+        ...fakeResources.providers,
         mockFileStorageProvider,
         { provide: MailService, useValue: { sendInvoice } },
       ],
@@ -84,27 +74,17 @@ describe('InvoiceService (integration)', () => {
     orders = moduleRef.get(OrderService);
     customers = moduleRef.get(CustomerService);
     resources = moduleRef.get(ResourceService);
-    invoiceModel = moduleRef.get(getModelToken(Invoice.name));
-    orderModel = moduleRef.get(getModelToken(Order.name));
-    customerModel = moduleRef.get(getModelToken(Customer.name));
-    resourceModel = moduleRef.get(getModelToken(Resource.name));
-    connection = moduleRef.get<Connection>(getConnectionToken());
   });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     sendInvoice.mockClear();
-    await invoiceModel.deleteMany({});
-    await orderModel.deleteMany({});
-    await customerModel.deleteMany({});
-    await resourceModel.deleteMany({});
+    invoicesFake._clear();
+    ordersFake._clear();
+    customersFake._clear();
+    resourcesFake._clear();
   });
 
   afterAll(async () => {
-    await invoiceModel.deleteMany({});
-    await orderModel.deleteMany({});
-    await customerModel.deleteMany({});
-    await resourceModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
@@ -114,8 +94,7 @@ describe('InvoiceService (integration)', () => {
     customerId?: string,
   ): Promise<{ orderId: string; customerId: string }> {
     const cid =
-      customerId ??
-      String((await customers.create(businessA, { name: 'Ada' }))._id);
+      customerId ?? (await customers.create(businessA, { name: 'Ada' })).id;
     const service = await resources.create(businessA, {
       type: ResourceType.SERVICE,
       name: 'Svc',
@@ -123,9 +102,9 @@ describe('InvoiceService (integration)', () => {
     });
     const order = await orders.create(businessA, {
       customerId: cid,
-      items: [{ resourceId: String(service._id), quantity: 1 }],
+      items: [{ resourceId: service.id, quantity: 1 }],
     });
-    return { orderId: String(order._id), customerId: cid };
+    return { orderId: order.id, customerId: cid };
   }
 
   describe('create', () => {
@@ -136,16 +115,18 @@ describe('InvoiceService (integration)', () => {
 
       expect(invoice.invoiceNumber).toMatch(/^VEN-/);
       expect(invoice.subtotal).toBe(100);
-      expect(invoice.vatAmount).toBe(15); // 15%
+      // Ghana VAT: NHIL + GETFund on subtotal; 15% VAT on the levy-inclusive
+      // base (105), i.e. 105 * 0.15 = 15.75.
       expect(invoice.nhilAmount).toBe(2.5); // 2.5%
       expect(invoice.getfundAmount).toBe(2.5); // 2.5%
-      expect(invoice.totalTax).toBe(20);
-      expect(invoice.totalAmount).toBe(120);
+      expect(invoice.vatAmount).toBe(15.75); // 15% of 105
+      expect(invoice.totalTax).toBe(20.75);
+      expect(invoice.totalAmount).toBe(120.75);
       expect(invoice.status).toBe(InvoiceStatus.DRAFT);
 
       // Order is now linked to the invoice.
-      const order = await orderModel.findById(orderId).exec();
-      expect(order?.invoiceId).toBe(String(invoice._id));
+      const order = ordersFake._get(orderId);
+      expect(order?.invoiceId).toBe(invoice.id);
     });
 
     it('sums multiple orders from the same customer', async () => {
@@ -156,7 +137,8 @@ describe('InvoiceService (integration)', () => {
         orderIds: [o1, o2],
       });
       expect(invoice.subtotal).toBe(150);
-      expect(invoice.totalAmount).toBe(180); // +20%
+      // 150 + (150*0.025)*2 levies + 0.15*(150+7.5) VAT = 150 + 7.5 + 23.63.
+      expect(invoice.totalAmount).toBe(181.13);
     });
 
     it('rejects orders already on an invoice', async () => {
@@ -188,9 +170,9 @@ describe('InvoiceService (integration)', () => {
 
   describe('recordPayment', () => {
     it('marks PARTIALLY_PAID then PAID across payments', async () => {
-      const { orderId } = await makeOrder(100); // total 120
+      const { orderId } = await makeOrder(100); // total 120.75
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
-      const id = String(invoice._id);
+      const id = invoice.id;
 
       let updated = await invoices.recordPayment(businessA, id, {
         amount: 50,
@@ -200,19 +182,19 @@ describe('InvoiceService (integration)', () => {
       expect(updated.status).toBe(InvoiceStatus.PARTIALLY_PAID);
 
       updated = await invoices.recordPayment(businessA, id, {
-        amount: 70,
+        amount: 70.75,
         paymentMethod: PaymentMethod.MOBILE_MONEY,
       });
-      expect(updated.amountPaid).toBe(120);
+      expect(updated.amountPaid).toBe(120.75);
       expect(updated.status).toBe(InvoiceStatus.PAID);
     });
 
     it('rejects overpayment', async () => {
-      const { orderId } = await makeOrder(100); // total 120
+      const { orderId } = await makeOrder(100); // total 120.75
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
 
       await expect(
-        invoices.recordPayment(businessA, String(invoice._id), {
+        invoices.recordPayment(businessA, invoice.id, {
           amount: 200,
           paymentMethod: PaymentMethod.CASH,
         }),
@@ -228,12 +210,12 @@ describe('InvoiceService (integration)', () => {
             name: 'Ada',
             email: 'ada@example.com',
           })
-        )._id,
+        ).id,
       );
       const { orderId } = await makeOrder(100, cid);
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
 
-      const sent = await invoices.send(businessA, String(invoice._id), {});
+      const sent = await invoices.send(businessA, invoice.id, {});
 
       expect(sent.status).toBe(InvoiceStatus.SENT);
       expect(sent.sentAt).toBeInstanceOf(Date);
@@ -251,12 +233,12 @@ describe('InvoiceService (integration)', () => {
             name: 'Ada',
             email: 'ada@example.com',
           })
-        )._id,
+        ).id,
       );
       const { orderId } = await makeOrder(100, cid);
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
 
-      await invoices.send(businessA, String(invoice._id), {
+      await invoices.send(businessA, invoice.id, {
         email: 'override@example.com',
       });
 
@@ -271,7 +253,7 @@ describe('InvoiceService (integration)', () => {
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
 
       await expect(
-        invoices.send(businessA, String(invoice._id), {}),
+        invoices.send(businessA, invoice.id, {}),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(sendInvoice).not.toHaveBeenCalled();
     });
@@ -283,16 +265,16 @@ describe('InvoiceService (integration)', () => {
             name: 'Ada',
             email: 'ada@example.com',
           })
-        )._id,
+        ).id,
       );
       const { orderId } = await makeOrder(100, cid);
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
-      await invoices.recordPayment(businessA, String(invoice._id), {
-        amount: 120,
+      await invoices.recordPayment(businessA, invoice.id, {
+        amount: 120.75,
         paymentMethod: PaymentMethod.CASH,
       });
 
-      const sent = await invoices.send(businessA, String(invoice._id), {});
+      const sent = await invoices.send(businessA, invoice.id, {});
 
       expect(sent.status).toBe(InvoiceStatus.PAID);
       expect(sent.sentAt).toBeInstanceOf(Date);
@@ -305,18 +287,18 @@ describe('InvoiceService (integration)', () => {
             name: 'Ada',
             email: 'ada@example.com',
           })
-        )._id,
+        ).id,
       );
       const { orderId } = await makeOrder(100, cid);
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
       await invoices.updateStatus(
         businessA,
-        String(invoice._id),
+        invoice.id,
         InvoiceStatus.CANCELLED,
       );
 
       await expect(
-        invoices.send(businessA, String(invoice._id), {}),
+        invoices.send(businessA, invoice.id, {}),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(sendInvoice).not.toHaveBeenCalled();
     });

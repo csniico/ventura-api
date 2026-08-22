@@ -11,7 +11,7 @@ paths:
         - App
   /users/email:
     post:
-      operationId: UserController_createWithEmail
+      operationId: UserControllerV2_createWithEmail
       parameters: []
       requestBody:
         required: true
@@ -31,7 +31,7 @@ paths:
         - Users
   /users/google:
     post:
-      operationId: UserController_createWithGoogle
+      operationId: UserControllerV2_createWithGoogle
       parameters: []
       requestBody:
         required: true
@@ -50,7 +50,7 @@ paths:
       tags: *a1
   /users/link-google:
     post:
-      operationId: UserController_linkGoogleAccount
+      operationId: UserControllerV2_linkGoogleAccount
       parameters: []
       requestBody:
         required: true
@@ -69,7 +69,7 @@ paths:
       tags: *a1
   /users/password:
     post:
-      operationId: UserController_createPassword
+      operationId: UserControllerV2_createPassword
       parameters: []
       requestBody:
         required: true
@@ -87,7 +87,7 @@ paths:
       summary: Set a password for a user that has none
       tags: *a1
     put:
-      operationId: UserController_updatePassword
+      operationId: UserControllerV2_updatePassword
       parameters: []
       requestBody:
         required: true
@@ -106,7 +106,7 @@ paths:
       tags: *a1
   /users/{id}/has-password:
     get:
-      operationId: UserController_hasPassword
+      operationId: UserControllerV2_hasPassword
       parameters:
         - name: id
           required: true
@@ -124,7 +124,7 @@ paths:
       tags: *a1
   /users/{id}:
     get:
-      operationId: UserController_getUserById
+      operationId: UserControllerV2_getUserById
       parameters:
         - name: id
           required: true
@@ -141,7 +141,7 @@ paths:
       summary: Get a user by id
       tags: *a1
     delete:
-      operationId: UserController_deleteAccount
+      operationId: UserControllerV2_deleteAccount
       parameters:
         - name: id
           required: true
@@ -159,7 +159,7 @@ paths:
       tags: *a1
   /users/{id}/profile:
     patch:
-      operationId: UserController_updateProfile
+      operationId: UserControllerV2_updateProfile
       parameters:
         - name: id
           required: true
@@ -183,7 +183,7 @@ paths:
       tags: *a1
   /users/{id}/first-name:
     patch:
-      operationId: UserController_updateFirstName
+      operationId: UserControllerV2_updateFirstName
       parameters:
         - name: id
           required: true
@@ -207,7 +207,7 @@ paths:
       tags: *a1
   /users/{id}/last-name:
     patch:
-      operationId: UserController_updateLastName
+      operationId: UserControllerV2_updateLastName
       parameters:
         - name: id
           required: true
@@ -231,7 +231,7 @@ paths:
       tags: *a1
   /users/{id}/email:
     post:
-      operationId: UserController_requestEmailChange
+      operationId: UserControllerV2_requestEmailChange
       parameters:
         - name: id
           required: true
@@ -255,7 +255,7 @@ paths:
       tags: *a1
   /users/{id}/email/confirm:
     post:
-      operationId: UserController_confirmEmailChange
+      operationId: UserControllerV2_confirmEmailChange
       parameters:
         - name: id
           required: true
@@ -279,7 +279,7 @@ paths:
       tags: *a1
   /users/{id}/avatar:
     patch:
-      operationId: UserController_updateAvatar
+      operationId: UserControllerV2_updateAvatar
       parameters:
         - name: id
           required: true
@@ -303,7 +303,7 @@ paths:
       tags: *a1
   /users/{id}/business:
     patch:
-      operationId: UserController_setBusinessId
+      operationId: UserControllerV2_setBusinessId
       parameters:
         - name: id
           required: true
@@ -588,6 +588,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
       summary: Sign in with a Google ID token
+      tags: *a5
+  /auth/sign-in-apple:
+    post:
+      operationId: AuthController_signInWithApple
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInAppleDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+      summary: Verify an Apple identity token and sign in
+      tags: *a5
+  /auth/apple/callback:
+    post:
+      operationId: AuthController_appleCallback
+      parameters: []
+      responses:
+        "201":
+          description: ""
       tags: *a5
   /auth/refresh:
     post:
@@ -954,6 +981,31 @@ paths:
                 $ref: "#/components/schemas/AppointmentResponse"
       security: *a10
       summary: Delete an appointment
+      tags: *a11
+  /appointments/{id}/status:
+    patch:
+      operationId: AppointmentController_updateStatus
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppointmentStatusDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentResponse"
+      security: *a10
+      summary: Update an appointment's status
       tags: *a11
   /resources:
     post:
@@ -1433,6 +1485,22 @@ paths:
       summary: Global search across all resources
       tags:
         - Search
+  /setup/status:
+    get:
+      operationId: SetupController_status
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupStatusResponse"
+      security:
+        - bearer: []
+      summary: Get the user's first-run setup status
+      tags:
+        - Setup
 info:
   title: Ventura API
   description: Ventura backend API.
@@ -1464,7 +1532,7 @@ components:
     UserResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         shortId:
@@ -1516,7 +1584,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - shortId
         - firstName
         - email
@@ -1771,7 +1839,7 @@ components:
     AdminResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         shortId:
@@ -1791,7 +1859,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - shortId
         - name
         - email
@@ -1861,10 +1929,26 @@ components:
           example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
       required:
         - idToken
+    SignInAppleDto:
+      type: object
+      properties:
+        identityToken:
+          type: string
+          example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+        rawNonce:
+          type: string
+        firstName:
+          type: string
+          example: Ada
+        lastName:
+          type: string
+          example: Lovelace
+      required:
+        - identityToken
     BusinessResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         shortId:
@@ -1961,7 +2045,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - shortId
         - name
         - ownerId
@@ -2073,7 +2157,7 @@ components:
     CustomerResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         shortId:
@@ -2105,7 +2189,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - shortId
         - businessId
         - name
@@ -2291,7 +2375,7 @@ components:
     AppointmentResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         shortId:
@@ -2328,6 +2412,14 @@ components:
           type: object
           allOf:
             - $ref: "#/components/schemas/RecurrenceResponse"
+        status:
+          type: string
+          enum:
+            - scheduled
+            - completed
+            - attended
+            - cancelled
+          example: scheduled
         createdAt:
           type: string
           format: date-time
@@ -2335,7 +2427,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - shortId
         - businessId
         - createdBy
@@ -2343,6 +2435,7 @@ components:
         - start
         - end
         - invitees
+        - status
         - createdAt
         - updatedAt
     UpdateAppointmentDto:
@@ -2372,6 +2465,19 @@ components:
         clearRecurrence:
           type: boolean
           example: true
+    UpdateAppointmentStatusDto:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - scheduled
+            - completed
+            - attended
+            - cancelled
+          example: completed
+      required:
+        - status
     CreateResourceDto:
       type: object
       properties:
@@ -2430,7 +2536,7 @@ components:
     ResourceResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         shortId:
@@ -2499,7 +2605,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - shortId
         - businessId
         - type
@@ -2627,7 +2733,7 @@ components:
     OrderResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         orderNumber:
@@ -2676,7 +2782,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - orderNumber
         - businessId
         - customerId
@@ -2745,7 +2851,7 @@ components:
     InvoiceResponse:
       type: object
       properties:
-        _id:
+        id:
           type: string
           example: 665f1b2c3d4e5f6a7b8c9d0e
         invoiceNumber:
@@ -2855,7 +2961,7 @@ components:
           type: string
           format: date-time
       required:
-        - _id
+        - id
         - invoiceNumber
         - businessId
         - orderIds
@@ -3059,9 +3165,46 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/InvoiceResponse"
+        appointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppointmentResponse"
       required:
         - query
         - customers
         - resources
         - orders
         - invoices
+        - appointments
+    SetupStatusResponse:
+      type: object
+      properties:
+        hasBusiness:
+          type: boolean
+          example: false
+        hasCustomers:
+          type: boolean
+          example: false
+        hasResources:
+          type: boolean
+          example: false
+        hasOrders:
+          type: boolean
+          example: false
+        hasInvoices:
+          type: boolean
+          example: false
+        hasAppointments:
+          type: boolean
+          example: false
+        complete:
+          type: boolean
+          example: false
+      required:
+        - hasBusiness
+        - hasCustomers
+        - hasResources
+        - hasOrders
+        - hasInvoices
+        - hasAppointments
+        - complete

@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { CustomerService } from '../customer/customer.service';
-import { ResourceService } from '../resource/resource.service';
-import { OrderService } from '../order/order.service';
-import { InvoiceService } from '../invoice/invoice.service';
-import { AppointmentService } from '../appointment/appointment.service';
+import { CustomerService } from '../customer/application/customer.service';
+import { toCustomerResponse } from '../customer/application/customer.mapper';
+import { ResourceService } from '../resource/application/resource.service';
+import { toResourceResponse } from '../resource/application/resource.mapper';
+import { OrderService } from '../order/application/order.service';
+import { toOrderResponse } from '../order/application/order.mapper';
+import { InvoiceService } from '../invoice/application/invoice.service';
+import { toInvoiceResponse } from '../invoice/application/invoice.mapper';
+import { AppointmentService } from '../appointment/application/appointment.service';
+import { toAppointmentResponse } from '../appointment/application/appointment.mapper';
 
 const PER_GROUP_LIMIT = 5;
 
@@ -57,11 +62,12 @@ export class SearchService {
 
     return {
       query,
-      customers: customers.data,
-      resources: resources.data,
-      orders: orders.data,
-      invoices: invoices.data,
-      appointments,
+      // Customers + resources + orders are Postgres-backed; map to shared shape.
+      customers: customers.data.map(toCustomerResponse),
+      resources: resources.data.map(toResourceResponse),
+      orders: orders.data.map(toOrderResponse),
+      invoices: invoices.data.map(toInvoiceResponse),
+      appointments: appointments.map(toAppointmentResponse),
     };
   }
 }

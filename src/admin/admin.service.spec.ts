@@ -1,53 +1,44 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
-import { Connection, Model, Types } from 'mongoose';
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { NotFoundException } from '@nestjs/common';
 
-import { UserService } from '../user/user.service';
-import {
-  EmailChange,
-  EmailChangeSchema,
-} from '../user/schemas/email-change.schema';
 import { MailService } from '../mail/mail.service';
-import { User, UserDocument, UserSchema } from '../user/schemas/user.schema';
+import { UserServiceV2 } from '../user/application/user.service';
 import { UserEvents } from '../user/events/user.events';
-import { Admin, AdminDocument, AdminSchema } from './schemas/admin.schema';
-import { AdminProfileService } from './services/admin-profile.service';
+import { AdminProfileService } from './application/admin-profile.service';
 import { AdminManageUsersService } from './services/admin.manage-users.service';
-import { resolveTestUri } from '../test-utils/test-db';
 import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
+import {
+  FakeUserRepository,
+  fakeUserServiceProviders,
+} from '../test-utils/fake-user';
+import {
+  FakeAdminRepository,
+  fakeAdminServiceProviders,
+} from '../test-utils/fake-admin';
 
-describe('Admin module (integration, real MongoDB)', () => {
+describe('Admin module', () => {
   let moduleRef: TestingModule;
   let profileService: AdminProfileService;
   let manageUsers: AdminManageUsersService;
-  let adminModel: Model<AdminDocument>;
-  let userModel: Model<UserDocument>;
-  let connection: Connection;
+  let users: UserServiceV2;
+  let usersFake: FakeUserRepository;
+  let adminsFake: FakeAdminRepository;
   let eventEmitter: EventEmitter2;
 
   beforeAll(async () => {
-    const uri = resolveTestUri('admin');
+    // Both admins and users are Postgres-backed via in-memory fakes.
+    const fakeUsers = fakeUserServiceProviders();
+    usersFake = fakeUsers.users;
+    const fakeAdmins = fakeAdminServiceProviders();
+    adminsFake = fakeAdmins.admins;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        EventEmitterModule.forRoot(),
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Admin.name, schema: AdminSchema },
-          { name: User.name, schema: UserSchema },
-          { name: EmailChange.name, schema: EmailChangeSchema },
-        ]),
-      ],
+      imports: [EventEmitterModule.forRoot()],
       providers: [
-        AdminProfileService,
+        ...fakeAdmins.providers,
         AdminManageUsersService,
-        UserService,
+        ...fakeUsers.providers,
         mockFileStorageProvider,
         { provide: MailService, useValue: { sendVerificationCode: jest.fn() } },
       ],
@@ -55,21 +46,16 @@ describe('Admin module (integration, real MongoDB)', () => {
 
     profileService = moduleRef.get(AdminProfileService);
     manageUsers = moduleRef.get(AdminManageUsersService);
-    adminModel = moduleRef.get<Model<AdminDocument>>(getModelToken(Admin.name));
-    userModel = moduleRef.get<Model<UserDocument>>(getModelToken(User.name));
-    connection = moduleRef.get<Connection>(getConnectionToken());
+    users = moduleRef.get(UserServiceV2);
     eventEmitter = moduleRef.get<EventEmitter2>(EventEmitter2);
   });
 
-  beforeEach(async () => {
-    await adminModel.deleteMany({});
-    await userModel.deleteMany({});
+  beforeEach(() => {
+    adminsFake._clear();
+    usersFake._clear();
   });
 
   afterAll(async () => {
-    await adminModel.deleteMany({});
-    await userModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
@@ -79,12 +65,12 @@ describe('Admin module (integration, real MongoDB)', () => {
         name: 'Boss',
         email: 'boss@example.com',
       });
-      expect(admin._id).toBeDefined();
+      expect(admin.id).toBeDefined();
       expect(admin.shortId).toHaveLength(8);
 
-      const fromDb = await adminModel.findById(admin._id).exec();
-      expect(fromDb?.name).toBe('Boss');
-      expect(fromDb?.email).toBe('boss@example.com');
+      const fromDb = await profileService.getById(admin.id);
+      expect(fromDb.name).toBe('Boss');
+      expect(fromDb.email).toBe('boss@example.com');
     });
 
     it('returns the existing admin on duplicate email', async () => {
@@ -96,16 +82,15 @@ describe('Admin module (integration, real MongoDB)', () => {
         name: 'Other',
         email: 'dupe@example.com',
       });
-      expect(String(second._id)).toBe(String(first._id));
+      expect(second.id).toBe(first.id);
       expect(second.name).toBe('Boss');
-      expect(await adminModel.countDocuments()).toBe(1);
+      expect(adminsFake._count()).toBe(1);
     });
 
     it('getById throws NotFound for a missing admin', async () => {
-      const missing = new Types.ObjectId().toString();
-      await expect(profileService.getById(missing)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        profileService.getById('00000000-0000-4000-8000-999999999999'),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('updates the admin name', async () => {
@@ -113,31 +98,39 @@ describe('Admin module (integration, real MongoDB)', () => {
         name: 'Boss',
         email: 'upd@example.com',
       });
-      await profileService.updateProfile(String(admin._id), {
-        name: 'New Boss',
-      });
+      await profileService.updateProfile(admin.id, { name: 'New Boss' });
 
-      const fromDb = await adminModel.findById(admin._id).exec();
-      expect(fromDb?.name).toBe('New Boss');
+      const fromDb = await profileService.getById(admin.id);
+      expect(fromDb.name).toBe('New Boss');
+    });
+
+    it('updateProfile throws NotFound for a missing admin', async () => {
+      await expect(
+        profileService.updateProfile('00000000-0000-4000-8000-999999999999', {
+          name: 'X',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
   describe('AdminManageUsersService', () => {
+    const MISSING = '00000000-0000-4000-8000-999999999999';
+
     async function seedUser(email: string) {
-      return userModel.create({ firstName: 'U', email });
+      return users.createWithEmail({ firstName: 'U', email });
     }
 
     it('lists users newest first', async () => {
       await seedUser('a@example.com');
       await seedUser('b@example.com');
 
-      const users = await manageUsers.listUsers();
-      expect(users).toHaveLength(2);
+      const list = await manageUsers.listUsers();
+      expect(list).toHaveLength(2);
     });
 
     it('gets a user by id (via UserService)', async () => {
       const u = await seedUser('get@example.com');
-      const found = await manageUsers.getUserById(String(u._id));
+      const found = await manageUsers.getUserById(u.id);
       expect(found.email).toBe('get@example.com');
     });
 
@@ -145,19 +138,17 @@ describe('Admin module (integration, real MongoDB)', () => {
       const u = await seedUser('soft@example.com');
       const emitSpy = jest.spyOn(eventEmitter, 'emit');
 
-      await manageUsers.softDeleteUser(String(u._id));
-      let fromDb = await userModel.findById(u._id).exec();
-      expect(fromDb?.deleted).toBe(true);
-      expect(fromDb?.deletedAt).toBeInstanceOf(Date);
+      await manageUsers.softDeleteUser(u.id);
+      expect(usersFake._get(u.id)?.deleted).toBe(true);
+      expect(usersFake._get(u.id)?.deletedAt).toBeInstanceOf(Date);
 
       emitSpy.mockClear();
-      await manageUsers.restoreUser(String(u._id));
-      fromDb = await userModel.findById(u._id).exec();
-      expect(fromDb?.deleted).toBe(false);
-      expect(fromDb?.deletedAt == null).toBe(true);
+      await manageUsers.restoreUser(u.id);
+      expect(usersFake._get(u.id)?.deleted).toBe(false);
+      expect(usersFake._get(u.id)?.deletedAt == null).toBe(true);
       expect(emitSpy).toHaveBeenCalledWith(
         UserEvents.RESTORED,
-        expect.objectContaining({ userId: String(u._id) }),
+        expect.objectContaining({ userId: u.id }),
       );
 
       emitSpy.mockRestore();
@@ -167,15 +158,14 @@ describe('Admin module (integration, real MongoDB)', () => {
       const u = await seedUser('noop-restore@example.com');
       const emitSpy = jest.spyOn(eventEmitter, 'emit');
 
-      await manageUsers.restoreUser(String(u._id));
+      await manageUsers.restoreUser(u.id);
       expect(emitSpy).not.toHaveBeenCalled();
 
       emitSpy.mockRestore();
     });
 
     it('restoreUser throws NotFound when the user does not exist', async () => {
-      const missing = new Types.ObjectId().toString();
-      await expect(manageUsers.restoreUser(missing)).rejects.toBeInstanceOf(
+      await expect(manageUsers.restoreUser(MISSING)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
@@ -184,26 +174,24 @@ describe('Admin module (integration, real MongoDB)', () => {
       const u = await seedUser('hard@example.com');
       const emitSpy = jest.spyOn(eventEmitter, 'emit');
 
-      const removed = await manageUsers.hardDeleteUser(String(u._id));
+      const removed = await manageUsers.hardDeleteUser(u.id);
       expect(removed?.email).toBe('hard@example.com');
 
-      const fromDb = await userModel.findById(u._id).exec();
-      expect(fromDb).toBeNull();
-      expect(await userModel.countDocuments()).toBe(0);
+      expect(usersFake._get(u.id)).toBeUndefined();
+      expect(usersFake._count()).toBe(0);
 
       expect(emitSpy).toHaveBeenCalledWith(
         UserEvents.PERMANENTLY_DELETED,
-        expect.objectContaining({ userId: String(u._id) }),
+        expect.objectContaining({ userId: u.id }),
       );
 
       emitSpy.mockRestore();
     });
 
     it('hard-delete returns null and emits nothing when the user does not exist', async () => {
-      const missing = new Types.ObjectId().toString();
       const emitSpy = jest.spyOn(eventEmitter, 'emit');
 
-      const removed = await manageUsers.hardDeleteUser(missing);
+      const removed = await manageUsers.hardDeleteUser(MISSING);
       expect(removed).toBeNull();
       expect(emitSpy).not.toHaveBeenCalled();
 

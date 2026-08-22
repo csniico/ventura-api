@@ -1,86 +1,68 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { Connection, Model, Types } from 'mongoose';
 
-import { BusinessService } from './business.service';
-import {
-  Business,
-  BusinessDocument,
-  BusinessSchema,
-} from './schemas/business.schema';
-import { UserService } from '../user/user.service';
-import { User, UserDocument, UserSchema } from '../user/schemas/user.schema';
-import {
-  EmailChange,
-  EmailChangeSchema,
-} from '../user/schemas/email-change.schema';
+import { BusinessService } from './application/business.service';
+import { BUSINESS_DATA_SOURCE } from './domain/business.repository';
+import { UserServiceV2 } from '../user/application/user.service';
 import { MailService } from '../mail/mail.service';
-import { resolveTestUri } from '../test-utils/test-db';
 import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
+import {
+  FakeUserRepository,
+  fakeUserServiceProviders,
+} from '../test-utils/fake-user';
+import { FakeBusinessRepository } from '../test-utils/fake-business';
 
-describe('BusinessService (integration)', () => {
+/**
+ * Behavioural spec for the Postgres-backed BusinessService. Both the business
+ * and user repositories are in-memory fakes (the repository pattern makes this
+ * DB-free); the real SQL path is covered by the live smoke test.
+ */
+describe('BusinessService (behavioural, fake repositories)', () => {
   let moduleRef: TestingModule;
   let business: BusinessService;
-  let users: UserService;
-  let businessModel: Model<BusinessDocument>;
-  let userModel: Model<UserDocument>;
-  let connection: Connection;
+  let users: UserServiceV2;
+  let usersFake: FakeUserRepository;
+  let businessFake: FakeBusinessRepository;
+
+  const MISSING = '10000000-0000-4000-8000-999999999999';
 
   beforeAll(async () => {
-    const uri = resolveTestUri('business');
+    const fakeUsers = fakeUserServiceProviders();
+    usersFake = fakeUsers.users;
+    businessFake = new FakeBusinessRepository();
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        EventEmitterModule.forRoot(),
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Business.name, schema: BusinessSchema },
-          { name: User.name, schema: UserSchema },
-          { name: EmailChange.name, schema: EmailChangeSchema },
-        ]),
-      ],
+      imports: [EventEmitterModule.forRoot()],
       providers: [
         BusinessService,
-        UserService,
+        { provide: BUSINESS_DATA_SOURCE, useValue: businessFake },
+        ...fakeUsers.providers,
         mockFileStorageProvider,
         { provide: MailService, useValue: { sendVerificationCode: jest.fn() } },
       ],
     }).compile();
 
     business = moduleRef.get(BusinessService);
-    users = moduleRef.get(UserService);
-    businessModel = moduleRef.get<Model<BusinessDocument>>(
-      getModelToken(Business.name),
-    );
-    userModel = moduleRef.get<Model<UserDocument>>(getModelToken(User.name));
-    connection = moduleRef.get<Connection>(getConnectionToken());
+    users = moduleRef.get(UserServiceV2);
   });
 
-  beforeEach(async () => {
-    await businessModel.deleteMany({});
-    await userModel.deleteMany({});
+  beforeEach(() => {
+    businessFake._clear();
+    usersFake._clear();
   });
 
   afterAll(async () => {
-    await businessModel.deleteMany({});
-    await userModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
   async function makeOwner(email = 'owner@example.com'): Promise<string> {
     const user = await users.createWithEmail({ firstName: 'Owner', email });
-    return String(user._id);
+    return user.id;
   }
 
   it('exposes suggested categories', () => {
@@ -99,9 +81,8 @@ describe('BusinessService (integration)', () => {
       expect(created.shortId).toHaveLength(8);
       expect(created.categories).toEqual([]);
 
-      // Owner's user doc was linked.
-      const owner = await userModel.findById(ownerId).exec();
-      expect(owner!.businessId).toBe(String(created._id));
+      // Owner's user was linked.
+      expect(usersFake._get(ownerId)?.businessId).toBe(created.id);
     });
 
     it('stores name and custom categories on create', async () => {
@@ -113,7 +94,7 @@ describe('BusinessService (integration)', () => {
 
       expect(created.name).toBe('Beauty Co');
       expect(created.categories).toEqual(['beauty', 'custom-niche']);
-      // Other properties are unset on create — they are added later via update.
+      // Other properties are unset on create — added later via update.
       expect(created.description == null).toBe(true);
     });
 
@@ -126,8 +107,7 @@ describe('BusinessService (integration)', () => {
       ).rejects.toBeInstanceOf(ConflictException);
 
       // Only the first business exists (the orphan was rolled back).
-      const count = await businessModel.countDocuments();
-      expect(count).toBe(1);
+      expect(businessFake._count()).toBe(1);
     });
   });
 
@@ -136,13 +116,12 @@ describe('BusinessService (integration)', () => {
       const ownerId = await makeOwner();
       const created = await business.create(ownerId, { name: 'Acme' });
 
-      const found = await business.getById(String(created._id));
+      const found = await business.getById(created.id);
       expect(found.name).toBe('Acme');
     });
 
     it('throws NotFound for a missing id', async () => {
-      const missing = new Types.ObjectId().toString();
-      await expect(business.getById(missing)).rejects.toBeInstanceOf(
+      await expect(business.getById(MISSING)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
@@ -162,7 +141,7 @@ describe('BusinessService (integration)', () => {
       const ownerId = await makeOwner();
       const created = await business.create(ownerId, { name: 'Acme' });
 
-      const updated = await business.update(String(created._id), ownerId, {
+      const updated = await business.update(created.id, ownerId, {
         name: 'Acme Inc',
         tagLine: 'We build things',
       });
@@ -177,7 +156,7 @@ describe('BusinessService (integration)', () => {
         name: 'Acme',
         categories: ['tech'],
       });
-      const id = String(created._id);
+      const id = created.id;
 
       // Each call sends only the one field the user changed.
       await business.update(id, ownerId, { description: 'We build things' });
@@ -186,7 +165,7 @@ describe('BusinessService (integration)', () => {
         businessHours: { monday: { open: '09:00', close: '17:00' } },
       });
 
-      const fromDb = await businessModel.findById(id).exec();
+      const fromDb = businessFake._get(id);
       expect(fromDb?.description).toBe('We build things');
       expect(fromDb?.phone).toBe('+233200000000');
       expect(fromDb?.businessHours?.monday.open).toBe('09:00');
@@ -201,15 +180,14 @@ describe('BusinessService (integration)', () => {
       const created = await business.create(ownerId, { name: 'Acme' });
 
       await expect(
-        business.update(String(created._id), otherId, { name: 'Hijacked' }),
+        business.update(created.id, otherId, { name: 'Hijacked' }),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('throws NotFound updating a missing business', async () => {
       const ownerId = await makeOwner();
-      const missing = new Types.ObjectId().toString();
       await expect(
-        business.update(missing, ownerId, { name: 'X' }),
+        business.update(MISSING, ownerId, { name: 'X' }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });

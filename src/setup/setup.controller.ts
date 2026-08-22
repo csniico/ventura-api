@@ -22,7 +22,7 @@ export class SetupController {
   constructor(private readonly setupService: SetupService) {}
 
   /** First-run setup progress for the authenticated user. */
-  @ApiOperation({ summary: 'Get the user\'s first-run setup status' })
+  @ApiOperation({ summary: "Get the user's first-run setup status" })
   @ApiResponse({ status: 200, type: SetupStatusResponse })
   @Get('/status')
   async status(@Req() req: AuthedRequest) {

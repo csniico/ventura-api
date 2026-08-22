@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   AppointmentStatus,
   RecurrenceFrequency,
-} from '../schemas/appointment.schema';
+} from '../domain/appointment.entity';
 
 /** An invitee on an appointment. */
 export class InviteeResponse {
@@ -40,7 +40,7 @@ export class RecurrenceResponse {
 /** Public shape of an Appointment returned by the API. */
 export class AppointmentResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  _id!: string;
+  id!: string;
 
   @ApiProperty({ example: 'aB3xY9kP' })
   shortId!: string;
@@ -72,7 +72,10 @@ export class AppointmentResponse {
   @ApiProperty({ required: false, nullable: true, type: RecurrenceResponse })
   recurrence?: RecurrenceResponse | null;
 
-  @ApiProperty({ enum: AppointmentStatus, example: AppointmentStatus.SCHEDULED })
+  @ApiProperty({
+    enum: AppointmentStatus,
+    example: AppointmentStatus.SCHEDULED,
+  })
   status!: AppointmentStatus;
 
   @ApiProperty({ type: String, format: 'date-time' })

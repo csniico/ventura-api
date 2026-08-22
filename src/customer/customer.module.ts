@@ -1,19 +1,23 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { UserModule } from '../user/user.module';
-import { CustomerService } from './customer.service';
-import { CustomerController } from './customer.controller';
-import { Customer, CustomerSchema } from './schemas/customer.schema';
+import { CustomerService } from './application/customer.service';
+import { CustomerController } from './application/customer.controller';
+import { PostgresCustomerEntity } from './domain/postgres.customer-entity';
+import { CUSTOMER_DATA_SOURCE } from './domain/customer.repository';
+import { PostgresCustomerRepository } from './infrastructure/postgres-customer.repository';
 
 @Module({
-  imports: [
-    UserModule,
-    MongooseModule.forFeature([
-      { name: Customer.name, schema: CustomerSchema },
-    ]),
-  ],
+  imports: [UserModule, MikroOrmModule.forFeature([PostgresCustomerEntity])],
   controllers: [CustomerController],
-  providers: [CustomerService],
+  providers: [
+    CustomerService,
+    PostgresCustomerRepository,
+    {
+      provide: CUSTOMER_DATA_SOURCE,
+      useClass: PostgresCustomerRepository,
+    },
+  ],
   exports: [CustomerService],
 })
 export class CustomerModule {}

@@ -1,21 +1,28 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { UserModule } from '../user/user.module';
 import { FileStorageModule } from '../file-storage/file-storage.module';
-import { ResourceService } from './resource.service';
-import { ResourceController } from './resource.controller';
-import { Resource, ResourceSchema } from './schemas/resource.schema';
+import { ResourceService } from './application/resource.service';
+import { ResourceController } from './application/resource.controller';
+import { PostgresResourceEntity } from './domain/postgres.resource-entity';
+import { RESOURCE_DATA_SOURCE } from './domain/resource.repository';
+import { PostgresResourceRepository } from './infrastructure/postgres-resource.repository';
 
 @Module({
   imports: [
     UserModule,
     FileStorageModule,
-    MongooseModule.forFeature([
-      { name: Resource.name, schema: ResourceSchema },
-    ]),
+    MikroOrmModule.forFeature([PostgresResourceEntity]),
   ],
   controllers: [ResourceController],
-  providers: [ResourceService],
+  providers: [
+    ResourceService,
+    PostgresResourceRepository,
+    {
+      provide: RESOURCE_DATA_SOURCE,
+      useClass: PostgresResourceRepository,
+    },
+  ],
   exports: [ResourceService],
 })
 export class ResourceModule {}

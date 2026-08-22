@@ -14,7 +14,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { SearchService } from './search.service';
-import { UserService } from '../user/user.service';
+import { UserServiceV2 } from '../user/application/user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthUser } from '../auth/types/auth.types';
 import { SearchResultsResponse } from './responses/search.response';
@@ -30,7 +30,7 @@ interface AuthedRequest {
 export class SearchController {
   constructor(
     private readonly searchService: SearchService,
-    private readonly userService: UserService,
+    private readonly userService: UserServiceV2,
   ) {}
 
   private async resolveBusinessId(req: AuthedRequest): Promise<string> {

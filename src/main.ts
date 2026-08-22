@@ -12,12 +12,28 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Auth uses bearer tokens in the Authorization header — no cookies.
-  const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS', '*');
-  app.enableCors({
-    origin:
+  // Fail closed: only fall back to the permissive `*` outside production. In
+  // production an explicit ALLOWED_ORIGINS allow-list is required, so a missing
+  // env var never silently opens the API to every origin.
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS');
+  let corsOrigin: string | string[] | boolean;
+  if (allowedOrigins) {
+    corsOrigin =
       allowedOrigins === '*'
         ? '*'
-        : allowedOrigins.split(',').map((origin) => origin.trim()),
+        : allowedOrigins.split(',').map((origin) => origin.trim());
+  } else if (nodeEnv === 'production') {
+    corsOrigin = false;
+    console.warn(
+      'ALLOWED_ORIGINS is not set in production — CORS is disabled. ' +
+        'Set an explicit comma-separated allow-list to permit browser clients.',
+    );
+  } else {
+    corsOrigin = '*';
+  }
+  app.enableCors({
+    origin: corsOrigin,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });

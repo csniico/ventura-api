@@ -1,62 +1,49 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Connection, Model, Types } from 'mongoose';
 
-import { ResourceService } from './resource.service';
-import {
-  Resource,
-  ResourceDocument,
-  ResourceSchema,
-  ResourceType,
-} from './schemas/resource.schema';
-import { resolveTestUri } from '../test-utils/test-db';
+import { ResourceService } from './application/resource.service';
+import { ResourceType } from './domain/resource.entity';
 import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
 import { FileStorageService } from '../file-storage/file-storage.service';
+import {
+  FakeResourceRepository,
+  fakeResourceServiceProviders,
+} from '../test-utils/fake-resource';
 
-describe('ResourceService (integration)', () => {
+/**
+ * Behavioural spec for the Postgres-backed ResourceService, run against an
+ * in-memory `FakeResourceRepository`. The real SQL path (ILIKE search,
+ * pagination, atomic stock UPDATEs, low-stock count) is covered by the live
+ * smoke test and the order specs.
+ */
+describe('ResourceService (behavioural, fake repository)', () => {
   let moduleRef: TestingModule;
   let service: ResourceService;
-  let resourceModel: Model<ResourceDocument>;
-  let connection: Connection;
+  let resourcesFake: FakeResourceRepository;
   let fileStorage: { deleteFile: jest.Mock };
 
   const businessA = 'biz-A';
   const businessB = 'biz-B';
+  const MISSING = '30000000-0000-4000-8000-999999999999';
 
   beforeAll(async () => {
-    const uri = resolveTestUri('resource');
+    const fake = fakeResourceServiceProviders();
+    resourcesFake = fake.resources;
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Resource.name, schema: ResourceSchema },
-        ]),
-      ],
-      providers: [ResourceService, mockFileStorageProvider],
+      providers: [...fake.providers, mockFileStorageProvider],
     }).compile();
 
     service = moduleRef.get(ResourceService);
-    resourceModel = moduleRef.get<Model<ResourceDocument>>(
-      getModelToken(Resource.name),
-    );
-    connection = moduleRef.get<Connection>(getConnectionToken());
     fileStorage = moduleRef.get(FileStorageService);
   });
 
-  beforeEach(async () => {
-    await resourceModel.deleteMany({});
+  beforeEach(() => {
+    resourcesFake._clear();
     fileStorage.deleteFile.mockClear();
   });
 
   afterAll(async () => {
-    await resourceModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
@@ -212,9 +199,9 @@ describe('ResourceService (integration)', () => {
         name: 'Hidden',
         price: 1,
       });
-      await expect(
-        service.getById(businessB, String(p._id)),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getById(businessB, p.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 
@@ -225,7 +212,7 @@ describe('ResourceService (integration)', () => {
         name: 'Old',
         price: 1,
       });
-      const updated = await service.update(businessA, String(p._id), {
+      const updated = await service.update(businessA, p.id, {
         name: 'New',
         price: 2.5,
         availableQuantity: 10,
@@ -242,7 +229,7 @@ describe('ResourceService (integration)', () => {
         price: 1,
       });
       await expect(
-        service.update(businessA, String(p._id), {
+        service.update(businessA, p.id, {
           businessHours: { monday: { open: '09:00', close: '17:00' } },
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -254,15 +241,56 @@ describe('ResourceService (integration)', () => {
         name: 'Bye',
         price: 1,
       });
-      await service.delete(businessA, String(p._id));
-      expect(await resourceModel.countDocuments()).toBe(0);
+      await service.delete(businessA, p.id);
+      expect(resourcesFake._count()).toBe(0);
     });
 
     it('throws NotFound deleting a missing resource', async () => {
-      const missing = new Types.ObjectId().toString();
-      await expect(service.delete(businessA, missing)).rejects.toBeInstanceOf(
+      await expect(service.delete(businessA, MISSING)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('stock operations', () => {
+    async function seedProduct(qty: number, threshold = 5) {
+      return service.create(businessA, {
+        type: ResourceType.PRODUCT,
+        name: 'Stocked',
+        price: 1,
+        availableQuantity: qty,
+        lowStockThreshold: threshold,
+      });
+    }
+
+    it('decrements stock when enough is available', async () => {
+      const p = await seedProduct(10);
+      expect(await service.decrementStock(businessA, p.id, 3)).toBe(true);
+      expect(resourcesFake._get(p.id)?.availableQuantity).toBe(7);
+    });
+
+    it('refuses to decrement below zero', async () => {
+      const p = await seedProduct(2);
+      expect(await service.decrementStock(businessA, p.id, 5)).toBe(false);
+      expect(resourcesFake._get(p.id)?.availableQuantity).toBe(2);
+    });
+
+    it('restores stock via increment', async () => {
+      const p = await seedProduct(4);
+      await service.incrementStock(businessA, p.id, 6);
+      expect(resourcesFake._get(p.id)?.availableQuantity).toBe(10);
+    });
+
+    it('counts products at or below their low-stock threshold', async () => {
+      await seedProduct(3, 5); // low
+      await seedProduct(5, 5); // low (<=)
+      await seedProduct(20, 5); // ok
+      await service.create(businessA, {
+        type: ResourceType.SERVICE,
+        name: 'Svc',
+        price: 1,
+      }); // services excluded
+      expect(await service.countLowStock(businessA)).toBe(2);
     });
   });
 
@@ -276,7 +304,7 @@ describe('ResourceService (integration)', () => {
         primaryImageKey: 'uploads/old.png',
       });
 
-      const updated = await service.update(businessA, String(p._id), {
+      const updated = await service.update(businessA, p.id, {
         primaryImage: 'https://example.com/new.png',
         primaryImageKey: 'uploads/new.png',
       });
@@ -295,7 +323,7 @@ describe('ResourceService (integration)', () => {
         supportingImageKeys: ['uploads/a.png', 'uploads/b.png'],
       });
 
-      await service.update(businessA, String(p._id), {
+      await service.update(businessA, p.id, {
         supportingImageKeys: ['uploads/a.png'],
       });
 
@@ -312,7 +340,7 @@ describe('ResourceService (integration)', () => {
         supportingImageKeys: ['uploads/x.png'],
       });
 
-      await service.update(businessA, String(p._id), {
+      await service.update(businessA, p.id, {
         name: 'Renamed',
         primaryImageKey: 'uploads/same.png',
         supportingImageKeys: ['uploads/x.png'],

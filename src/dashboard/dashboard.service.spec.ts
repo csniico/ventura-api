@@ -1,39 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MongooseModule,
-  getModelToken,
-  getConnectionToken,
-} from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
 
 import { DashboardService } from './dashboard.service';
+import { InvoiceStatus, InvoiceType } from '../invoice/domain/invoice.entity';
 import {
-  Invoice,
-  InvoiceDocument,
-  InvoiceSchema,
-  InvoiceStatus,
-} from '../invoice/schemas/invoice.schema';
+  FakeInvoiceRepository,
+  fakeInvoiceServiceProviders,
+} from '../test-utils/fake-invoice';
+import { OrderStatus } from '../order/domain/order.entity';
 import {
-  Order,
-  OrderDocument,
-  OrderSchema,
-  OrderStatus,
-} from '../order/schemas/order.schema';
+  FakeOrderRepository,
+  fakeOrderServiceProviders,
+} from '../test-utils/fake-order';
+import { ResourceType } from '../resource/domain/resource.entity';
+import { ResourceService } from '../resource/application/resource.service';
 import {
-  Resource,
-  ResourceDocument,
-  ResourceSchema,
-  ResourceType,
-} from '../resource/schemas/resource.schema';
-import { resolveTestUri } from '../test-utils/test-db';
+  FakeResourceRepository,
+  fakeResourceServiceProviders,
+} from '../test-utils/fake-resource';
+import { fakeCustomerServiceProviders } from '../test-utils/fake-customer';
+import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
+import { MailService } from '../mail/mail.service';
 
-describe('DashboardService (integration)', () => {
+describe('DashboardService (behavioural, fake repositories)', () => {
   let moduleRef: TestingModule;
   let service: DashboardService;
-  let invoiceModel: Model<InvoiceDocument>;
-  let orderModel: Model<OrderDocument>;
-  let resourceModel: Model<ResourceDocument>;
-  let connection: Connection;
+  let resources: ResourceService;
+  let resourcesFake: FakeResourceRepository;
+  let ordersFake: FakeOrderRepository;
+  let invoicesFake: FakeInvoiceRepository;
 
   const businessA = 'biz-A';
   // Fixed "now" so date windows are deterministic.
@@ -42,62 +36,70 @@ describe('DashboardService (integration)', () => {
     new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
 
   beforeAll(async () => {
-    const uri = resolveTestUri('dashboard');
+    // Invoices, orders, and resources are all Postgres-backed via fakes.
+    // OrderService also needs customer + resource fakes to construct.
+    const fakeResources = fakeResourceServiceProviders();
+    resourcesFake = fakeResources.resources;
+    const fakeOrders = fakeOrderServiceProviders();
+    ordersFake = fakeOrders.orders;
+    const fakeInvoices = fakeInvoiceServiceProviders();
+    invoicesFake = fakeInvoices.invoices;
+    const fakeCustomers = fakeCustomerServiceProviders();
 
     moduleRef = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(uri),
-        MongooseModule.forFeature([
-          { name: Invoice.name, schema: InvoiceSchema },
-          { name: Order.name, schema: OrderSchema },
-          { name: Resource.name, schema: ResourceSchema },
-        ]),
+      providers: [
+        DashboardService,
+        ...fakeInvoices.providers,
+        ...fakeOrders.providers,
+        ...fakeResources.providers,
+        ...fakeCustomers.providers,
+        mockFileStorageProvider,
+        { provide: MailService, useValue: { sendInvoice: jest.fn() } },
       ],
-      providers: [DashboardService],
     }).compile();
 
     service = moduleRef.get(DashboardService);
-    invoiceModel = moduleRef.get(getModelToken(Invoice.name));
-    orderModel = moduleRef.get(getModelToken(Order.name));
-    resourceModel = moduleRef.get(getModelToken(Resource.name));
-    connection = moduleRef.get<Connection>(getConnectionToken());
+    resources = moduleRef.get(ResourceService);
   });
 
-  beforeEach(async () => {
-    await invoiceModel.deleteMany({});
-    await orderModel.deleteMany({});
-    await resourceModel.deleteMany({});
+  beforeEach(() => {
+    invoicesFake._clear();
+    ordersFake._clear();
+    resourcesFake._clear();
   });
 
   afterAll(async () => {
-    await invoiceModel.deleteMany({});
-    await orderModel.deleteMany({});
-    await resourceModel.deleteMany({});
-    await connection.close();
     await moduleRef.close();
   });
 
-  // Minimal invoice seed (only the fields the dashboard reads).
+  // Minimal invoice seed (only the fields the dashboard reads). Payment fields
+  // aren't part of the create contract, so we set them on the stored row.
   async function seedInvoice(args: {
     amountPaid: number;
-    paymentDate?: Date;
+    paymentDate?: Date | null;
     status?: InvoiceStatus;
     customerName?: string;
   }) {
-    return invoiceModel.create({
+    const inv = await invoicesFake.create({
       businessId: businessA,
-      invoiceNumber: `VEN-${Math.random().toString(36).slice(2)}`,
+      orderIds: [],
+      customerName: args.customerName ?? 'Ada',
+      invoiceType: InvoiceType.STANDARD,
       subtotal: 100,
+      vatRate: 0.15,
       vatAmount: 15,
+      nhilRate: 0.025,
       nhilAmount: 2.5,
+      getfundRate: 0.025,
       getfundAmount: 2.5,
       totalTax: 20,
       totalAmount: 120,
-      amountPaid: args.amountPaid,
-      paymentDate: args.paymentDate ?? null,
-      status: args.status ?? InvoiceStatus.PARTIALLY_PAID,
-      customerName: args.customerName ?? 'Ada',
     });
+    const stored = invoicesFake._get(inv.id)!;
+    stored.amountPaid = args.amountPaid;
+    stored.paymentDate = args.paymentDate ?? null;
+    stored.status = args.status ?? InvoiceStatus.PARTIALLY_PAID;
+    return stored;
   }
 
   describe('revenue', () => {
@@ -125,29 +127,25 @@ describe('DashboardService (integration)', () => {
 
   describe('inventory', () => {
     it('counts low-stock products by their own threshold', async () => {
-      await resourceModel.create({
-        businessId: businessA,
+      await resources.create(businessA, {
         type: ResourceType.PRODUCT,
         name: 'Low',
         price: 1,
         availableQuantity: 2,
         lowStockThreshold: 5,
       });
-      await resourceModel.create({
-        businessId: businessA,
+      await resources.create(businessA, {
         type: ResourceType.PRODUCT,
         name: 'Fine',
         price: 1,
         availableQuantity: 50,
         lowStockThreshold: 5,
       });
-      // A service shouldn't count even at 0 stock.
-      await resourceModel.create({
-        businessId: businessA,
+      // A service shouldn't count (services default to 0 stock, excluded).
+      await resources.create(businessA, {
         type: ResourceType.SERVICE,
         name: 'Svc',
         price: 1,
-        availableQuantity: 0,
       });
 
       const summary = await service.getSummary(businessA, 30, now);
@@ -161,9 +159,8 @@ describe('DashboardService (integration)', () => {
         quantity: number,
         status = OrderStatus.COMPLETED,
       ) =>
-        orderModel.create({
+        ordersFake.create({
           businessId: businessA,
-          orderNumber: `ORD-${Math.random().toString(36).slice(2)}`,
           customerId: 'c1',
           customerName: 'Ada',
           items: [

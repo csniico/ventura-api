@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ResourceType } from '../../resource/schemas/resource.schema';
-import { OrderStatus } from '../schemas/order.schema';
+import { ResourceType } from '../../resource/domain/resource.entity';
+import { OrderStatus } from '../domain/order.entity';
 
 /** A line item on an order, with a snapshot of the resource at order time. */
 export class OrderItemResponse {
@@ -26,7 +26,7 @@ export class OrderItemResponse {
 /** Public shape of an Order returned by the API. */
 export class OrderResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  _id!: string;
+  id!: string;
 
   @ApiProperty({ example: 'ORD-AB3XY9KP' })
   orderNumber!: string;

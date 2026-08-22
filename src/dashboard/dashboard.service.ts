@@ -1,17 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Invoice, InvoiceDocument } from '../invoice/schemas/invoice.schema';
-import {
-  Order,
-  OrderDocument,
-  OrderStatus,
-} from '../order/schemas/order.schema';
-import {
-  Resource,
-  ResourceDocument,
-  ResourceType,
-} from '../resource/schemas/resource.schema';
+import { InvoiceService } from '../invoice/application/invoice.service';
+import { OrderService } from '../order/application/order.service';
+import { ResourceService } from '../resource/application/resource.service';
 
 export interface DashboardSummary {
   revenue: {
@@ -38,15 +28,17 @@ export interface DashboardSummary {
 /** Round to 2 decimals. */
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
+/**
+ * Aggregates the dashboard summary from the (now Postgres-backed) invoice,
+ * order, and resource services. This service holds no data access of its own —
+ * each figure is delegated to the owning service.
+ */
 @Injectable()
 export class DashboardService {
   constructor(
-    @InjectModel(Invoice.name)
-    private readonly invoiceModel: Model<InvoiceDocument>,
-    @InjectModel(Order.name)
-    private readonly orderModel: Model<OrderDocument>,
-    @InjectModel(Resource.name)
-    private readonly resourceModel: Model<ResourceDocument>,
+    private readonly invoiceService: InvoiceService,
+    private readonly orderService: OrderService,
+    private readonly resourceService: ResourceService,
   ) {}
 
   async getSummary(
@@ -75,9 +67,9 @@ export class DashboardService {
     const start60 = new Date(now.getTime() - 60 * day);
 
     const [totalAgg, last30Agg, prev30Agg] = await Promise.all([
-      this.sumPaid(businessId),
-      this.sumPaid(businessId, start30, now),
-      this.sumPaid(businessId, start60, start30),
+      this.invoiceService.sumAmountPaid(businessId),
+      this.invoiceService.sumAmountPaid(businessId, start30, now),
+      this.invoiceService.sumAmountPaid(businessId, start60, start30),
     ]);
 
     const last30Days = round2(last30Agg);
@@ -95,95 +87,29 @@ export class DashboardService {
     };
   }
 
-  /** Sum invoice amountPaid, optionally within a paymentDate window. */
-  private async sumPaid(
-    businessId: string,
-    from?: Date,
-    to?: Date,
-  ): Promise<number> {
-    const match: Record<string, unknown> = {
-      businessId,
-      amountPaid: { $gt: 0 },
-    };
-    if (from || to) {
-      const range: Record<string, Date> = {};
-      if (from) range.$gte = from;
-      if (to) range.$lt = to;
-      match.paymentDate = range;
-    }
-    const result = await this.invoiceModel
-      .aggregate<{
-        total: number;
-      }>([
-        { $match: match },
-        { $group: { _id: null, total: { $sum: '$amountPaid' } } },
-      ])
-      .exec();
-    return result[0]?.total ?? 0;
-  }
-
   /** Low-stock product count + top products by units sold. */
   private async getInventory(
     businessId: string,
   ): Promise<DashboardSummary['inventory']> {
     const [lowStockCount, topProducts] = await Promise.all([
-      this.resourceModel
-        .countDocuments({
-          businessId,
-          type: ResourceType.PRODUCT,
-          $expr: { $lte: ['$availableQuantity', '$lowStockThreshold'] },
-        })
-        .exec(),
-      this.getTopProducts(businessId),
+      this.resourceService.countLowStock(businessId),
+      this.orderService.topProducts(businessId, 5),
     ]);
     return { lowStockCount, topProducts };
-  }
-
-  /** Top 5 products by total units sold across non-cancelled orders. */
-  private async getTopProducts(
-    businessId: string,
-  ): Promise<DashboardSummary['inventory']['topProducts']> {
-    const rows = await this.orderModel
-      .aggregate<{ _id: string; name: string; unitsSold: number }>([
-        { $match: { businessId, status: { $ne: OrderStatus.CANCELLED } } },
-        { $unwind: '$items' },
-        { $match: { 'items.type': ResourceType.PRODUCT } },
-        {
-          $group: {
-            _id: '$items.resourceId',
-            name: { $first: '$items.name' },
-            unitsSold: { $sum: '$items.quantity' },
-          },
-        },
-        { $sort: { unitsSold: -1 } },
-        { $limit: 5 },
-      ])
-      .exec();
-
-    return rows.map((r) => ({
-      resourceId: r._id,
-      name: r.name,
-      unitsSold: r.unitsSold,
-    }));
   }
 
   /** The latest 5 invoices, newest first. */
   private async getRecentInvoices(
     businessId: string,
   ): Promise<DashboardSummary['recentInvoices']> {
-    const invoices = await this.invoiceModel
-      .find({ businessId })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .exec();
-
+    const invoices = await this.invoiceService.recent(businessId, 5);
     return invoices.map((inv) => ({
-      invoiceId: String(inv._id),
+      invoiceId: inv.id,
       invoiceNumber: inv.invoiceNumber,
       customerName: inv.customerName ?? null,
       totalAmount: inv.totalAmount,
       status: inv.status,
-      createdAt: inv.get('createdAt') as Date,
+      createdAt: inv.createdAt,
     }));
   }
 
@@ -195,28 +121,7 @@ export class DashboardService {
   ): Promise<DashboardSummary['dailyRevenue']> {
     const day = 24 * 60 * 60 * 1000;
     const from = new Date(now.getTime() - rangeDays * day);
-
-    const rows = await this.invoiceModel
-      .aggregate<{ _id: string; amount: number }>([
-        {
-          $match: {
-            businessId,
-            amountPaid: { $gt: 0 },
-            paymentDate: { $gte: from, $lte: now },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: '%Y-%m-%d', date: '$paymentDate' },
-            },
-            amount: { $sum: '$amountPaid' },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ])
-      .exec();
-
-    return rows.map((r) => ({ date: r._id, amount: round2(r.amount) }));
+    const rows = await this.invoiceService.dailyRevenue(businessId, from, now);
+    return rows.map((r) => ({ date: r.date, amount: round2(r.amount) }));
   }
 }

@@ -3,12 +3,12 @@ import {
   InvoiceStatus,
   InvoiceType,
   PaymentMethod,
-} from '../schemas/invoice.schema';
+} from '../domain/invoice.entity';
 
 /** Public shape of an Invoice returned by the API. */
 export class InvoiceResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  _id!: string;
+  id!: string;
 
   @ApiProperty({ example: 'VEN-260617120000123-AB12CD' })
   invoiceNumber!: string;
