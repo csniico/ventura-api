@@ -1,17 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ArrayMinSize, IsArray, ValidateNested } from 'class-validator';
-import { CreateCustomerDto } from './create-customer.dto';
+import { ImportCustomerDto } from './import-customer.dto';
 
 /**
  * Bulk import customers (e.g. contacts selected from a phone's address book on
- * iOS/Android). Each entry is validated individually.
+ * iOS/Android). Each entry is validated individually against the lenient
+ * [ImportCustomerDto] (email still checked); duplicates are skipped by the
+ * service and reported per row.
  */
 export class ImportCustomersDto {
-  @ApiProperty({ type: [CreateCustomerDto] })
+  @ApiProperty({ type: [ImportCustomerDto] })
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => CreateCustomerDto)
-  customers!: CreateCustomerDto[];
+  @Type(() => ImportCustomerDto)
+  customers!: ImportCustomerDto[];
 }
