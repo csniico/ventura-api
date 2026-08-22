@@ -4,7 +4,7 @@ import { ResourceType } from '../domain/resource.entity';
 /** Public shape of a Resource returned by the API. */
 export class ResourceResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  _id!: string;
+  id!: string;
 
   @ApiProperty({ example: 'aB3xY9kP' })
   shortId!: string;

@@ -2,13 +2,12 @@ import { IOrder } from '../domain/order.entity';
 import { OrderResponse } from '../responses/order.response';
 
 /**
- * Project a domain `IOrder` onto the public `OrderResponse` contract. Maps the
- * Postgres `id` to `_id` so the payload stays shape-compatible with the legacy
- * Mongo response, and normalises nullable columns.
+ * Project a domain `IOrder` onto the public `OrderResponse` contract,
+ * normalising nullable columns.
  */
 export function toOrderResponse(order: IOrder): OrderResponse {
   return {
-    _id: order.id,
+    id: order.id,
     orderNumber: order.orderNumber,
     businessId: order.businessId,
     customerId: order.customerId,

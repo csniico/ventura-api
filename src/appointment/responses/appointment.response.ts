@@ -40,7 +40,7 @@ export class RecurrenceResponse {
 /** Public shape of an Appointment returned by the API. */
 export class AppointmentResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  _id!: string;
+  id!: string;
 
   @ApiProperty({ example: 'aB3xY9kP' })
   shortId!: string;

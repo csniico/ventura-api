@@ -39,7 +39,7 @@ import { MessageResponse } from '../responses/user.response';
  *
  * Methods return the domain `IUser` (with `id`), so internal callers (auth,
  * admin, business, setup) get a consistent shape. Mapping to the public
- * `UserResponse` (`_id`) happens at the controller boundary.
+ * `UserResponse` happens at the controller boundary.
  */
 @Injectable()
 export class UserServiceV2 {

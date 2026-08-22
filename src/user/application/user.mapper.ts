@@ -4,12 +4,11 @@ import { UserResponse } from '../responses/user.response';
 /**
  * Project a domain `IUser` onto the public `UserResponse` contract. This is the
  * single place internal-only fields (`password`, `hashedRefreshToken`, `role`,
- * `appleId`) are dropped, and where the Postgres `id` is surfaced as `_id` so
- * the v2 payload stays shape-compatible with the legacy Mongo response.
+ * `appleId`) are dropped.
  */
 export function toUserResponse(user: IUser): UserResponse {
   return {
-    _id: user.id,
+    id: user.id,
     shortId: user.shortId,
     firstName: user.firstName,
     lastName: user.lastName ?? null,

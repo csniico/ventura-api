@@ -2,15 +2,14 @@ import { IAppointment } from '../domain/appointment.entity';
 import { AppointmentResponse } from '../responses/appointment.response';
 
 /**
- * Project a domain `IAppointment` onto the public `AppointmentResponse`. Maps the
- * Postgres `id` to `_id` so the payload stays shape-compatible with the legacy
- * Mongo response, and normalises nullable columns.
+ * Project a domain `IAppointment` onto the public `AppointmentResponse`,
+ * normalising nullable columns.
  */
 export function toAppointmentResponse(
   appointment: IAppointment,
 ): AppointmentResponse {
   return {
-    _id: appointment.id,
+    id: appointment.id,
     shortId: appointment.shortId,
     businessId: appointment.businessId,
     createdBy: appointment.createdBy,

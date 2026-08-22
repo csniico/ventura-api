@@ -2,13 +2,12 @@ import { IBusiness } from '../domain/business.entity';
 import { BusinessResponse } from '../responses/business.response';
 
 /**
- * Project a domain `IBusiness` onto the public `BusinessResponse` contract.
- * Maps the Postgres `id` to `_id` so the payload stays shape-compatible with the
- * legacy Mongo response, and normalises nullable columns.
+ * Project a domain `IBusiness` onto the public `BusinessResponse` contract,
+ * normalising nullable columns.
  */
 export function toBusinessResponse(business: IBusiness): BusinessResponse {
   return {
-    _id: business.id,
+    id: business.id,
     shortId: business.shortId,
     name: business.name,
     ownerId: business.ownerId,

@@ -2,13 +2,12 @@ import { IResource } from '../domain/resource.entity';
 import { ResourceResponse } from '../responses/resource.response';
 
 /**
- * Project a domain `IResource` onto the public `ResourceResponse` contract.
- * Maps the Postgres `id` to `_id` so the payload stays shape-compatible with the
- * legacy Mongo response, and normalises nullable columns.
+ * Project a domain `IResource` onto the public `ResourceResponse` contract,
+ * normalising nullable columns.
  */
 export function toResourceResponse(resource: IResource): ResourceResponse {
   return {
-    _id: resource.id,
+    id: resource.id,
     shortId: resource.shortId,
     businessId: resource.businessId,
     type: resource.type,

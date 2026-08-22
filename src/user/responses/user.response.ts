@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 /** Public shape of a User returned by the API (no password / refresh token). */
 export class UserResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  _id!: string;
+  id!: string;
 
   @ApiProperty({ example: 'aB3xY9kP' })
   shortId!: string;

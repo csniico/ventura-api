@@ -2,13 +2,12 @@ import { IInvoice } from '../domain/invoice.entity';
 import { InvoiceResponse } from '../responses/invoice.response';
 
 /**
- * Project a domain `IInvoice` onto the public `InvoiceResponse` contract. Maps
- * the Postgres `id` to `_id` so the payload stays shape-compatible with the
- * legacy Mongo response, and normalises nullable columns.
+ * Project a domain `IInvoice` onto the public `InvoiceResponse` contract,
+ * normalising nullable columns.
  */
 export function toInvoiceResponse(invoice: IInvoice): InvoiceResponse {
   return {
-    _id: invoice.id,
+    id: invoice.id,
     invoiceNumber: invoice.invoiceNumber,
     businessId: invoice.businessId,
     orderIds: invoice.orderIds ?? [],

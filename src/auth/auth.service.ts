@@ -89,8 +89,6 @@ export class AuthService {
   /** Build the standard auth response: tokens + the user (secrets stripped). */
   private async buildAuthResult(user: IUser): Promise<AuthResult> {
     const tokens = await this.issueTokens(user.id);
-    // toUserResponse drops password/hashedRefreshToken and maps id -> _id, so the
-    // auth response `user` keeps the same shape as the legacy Mongo response.
     return { ...tokens, user: toUserResponse(user) };
   }
 

@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 /** Public shape of a Customer returned by the API. */
 export class CustomerResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  _id!: string;
+  id!: string;
 
   @ApiProperty({ example: 'aB3xY9kP' })
   shortId!: string;

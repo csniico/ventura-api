@@ -24,3 +24,5 @@ scripts/automation/**/report-*.json
 scripts/automation/**/report-*.md
 scripts/automation/**/stress-*.json
 scripts/automation/**/stress-*.md
+
+.plans/
