@@ -4,6 +4,7 @@ import { UserModule } from '../user/user.module';
 import { OrderModule } from '../order/order.module';
 import { MailModule } from '../mail/mail.module';
 import { InvoiceService } from './application/invoice.service';
+import { InvoiceOverdueTask } from './application/invoice-overdue.task';
 import { InvoiceController } from './application/invoice.controller';
 import { PostgresInvoiceEntity } from './domain/postgres.invoice-entity';
 import { INVOICE_DATA_SOURCE } from './domain/invoice.repository';
@@ -19,6 +20,7 @@ import { PostgresInvoiceRepository } from './infrastructure/postgres-invoice.rep
   controllers: [InvoiceController],
   providers: [
     InvoiceService,
+    InvoiceOverdueTask,
     PostgresInvoiceRepository,
     {
       provide: INVOICE_DATA_SOURCE,

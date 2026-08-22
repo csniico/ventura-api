@@ -115,11 +115,13 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
 
       expect(invoice.invoiceNumber).toMatch(/^VEN-/);
       expect(invoice.subtotal).toBe(100);
-      expect(invoice.vatAmount).toBe(15); // 15%
+      // Ghana VAT: NHIL + GETFund on subtotal; 15% VAT on the levy-inclusive
+      // base (105), i.e. 105 * 0.15 = 15.75.
       expect(invoice.nhilAmount).toBe(2.5); // 2.5%
       expect(invoice.getfundAmount).toBe(2.5); // 2.5%
-      expect(invoice.totalTax).toBe(20);
-      expect(invoice.totalAmount).toBe(120);
+      expect(invoice.vatAmount).toBe(15.75); // 15% of 105
+      expect(invoice.totalTax).toBe(20.75);
+      expect(invoice.totalAmount).toBe(120.75);
       expect(invoice.status).toBe(InvoiceStatus.DRAFT);
 
       // Order is now linked to the invoice.
@@ -135,7 +137,8 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
         orderIds: [o1, o2],
       });
       expect(invoice.subtotal).toBe(150);
-      expect(invoice.totalAmount).toBe(180); // +20%
+      // 150 + (150*0.025)*2 levies + 0.15*(150+7.5) VAT = 150 + 7.5 + 23.63.
+      expect(invoice.totalAmount).toBe(181.13);
     });
 
     it('rejects orders already on an invoice', async () => {
@@ -167,7 +170,7 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
 
   describe('recordPayment', () => {
     it('marks PARTIALLY_PAID then PAID across payments', async () => {
-      const { orderId } = await makeOrder(100); // total 120
+      const { orderId } = await makeOrder(100); // total 120.75
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
       const id = invoice.id;
 
@@ -179,15 +182,15 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
       expect(updated.status).toBe(InvoiceStatus.PARTIALLY_PAID);
 
       updated = await invoices.recordPayment(businessA, id, {
-        amount: 70,
+        amount: 70.75,
         paymentMethod: PaymentMethod.MOBILE_MONEY,
       });
-      expect(updated.amountPaid).toBe(120);
+      expect(updated.amountPaid).toBe(120.75);
       expect(updated.status).toBe(InvoiceStatus.PAID);
     });
 
     it('rejects overpayment', async () => {
-      const { orderId } = await makeOrder(100); // total 120
+      const { orderId } = await makeOrder(100); // total 120.75
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
 
       await expect(
@@ -267,7 +270,7 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
       const { orderId } = await makeOrder(100, cid);
       const invoice = await invoices.create(businessA, { orderIds: [orderId] });
       await invoices.recordPayment(businessA, invoice.id, {
-        amount: 120,
+        amount: 120.75,
         paymentMethod: PaymentMethod.CASH,
       });
 

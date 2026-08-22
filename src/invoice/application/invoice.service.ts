@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OrderService } from '../../order/application/order.service';
+import { OrderStatus } from '../../order/domain/order.entity';
 import { MailService } from '../../mail/mail.service';
 import {
   DailyRevenue,
@@ -72,6 +73,14 @@ export class InvoiceService {
       );
     }
 
+    // Cancelled orders must not be billed — their stock was already restored.
+    const cancelled = orders.filter((o) => o.status === OrderStatus.CANCELLED);
+    if (cancelled.length > 0) {
+      throw new BadRequestException(
+        'One or more orders are cancelled and cannot be invoiced.',
+      );
+    }
+
     // All orders on one invoice must belong to the same customer.
     const customerIds = new Set(orders.map((o) => o.customerId));
     if (customerIds.size > 1) {
@@ -80,10 +89,12 @@ export class InvoiceService {
       );
     }
 
+    // Ghana VAT: the NHIL + GETFund levies are charged on the subtotal, and the
+    // 15% VAT is charged on the levy-inclusive base (not the bare subtotal).
     const subtotal = round2(orders.reduce((sum, o) => sum + o.totalAmount, 0));
-    const vatAmount = round2(subtotal * VAT_RATE);
     const nhilAmount = round2(subtotal * NHIL_RATE);
     const getfundAmount = round2(subtotal * GETFUND_RATE);
+    const vatAmount = round2((subtotal + nhilAmount + getfundAmount) * VAT_RATE);
     const totalTax = round2(vatAmount + nhilAmount + getfundAmount);
     const totalAmount = round2(subtotal + totalTax);
 
@@ -228,19 +239,70 @@ export class InvoiceService {
     return updated ?? invoice;
   }
 
-  /** Update an invoice's status directly. */
+  /**
+   * Legal direct status transitions. PAID / PARTIALLY_PAID are NOT reachable
+   * here — they are set only by {@link recordPayment} so `amountPaid` and
+   * `status` can never disagree. CANCELLED is terminal.
+   */
+  private static readonly INVOICE_TRANSITIONS: Record<
+    InvoiceStatus,
+    InvoiceStatus[]
+  > = {
+    [InvoiceStatus.DRAFT]: [InvoiceStatus.SENT, InvoiceStatus.CANCELLED],
+    [InvoiceStatus.SENT]: [InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
+    [InvoiceStatus.PARTIALLY_PAID]: [
+      InvoiceStatus.OVERDUE,
+      InvoiceStatus.CANCELLED,
+    ],
+    [InvoiceStatus.OVERDUE]: [InvoiceStatus.SENT, InvoiceStatus.CANCELLED],
+    [InvoiceStatus.PAID]: [InvoiceStatus.CANCELLED],
+    [InvoiceStatus.CANCELLED]: [],
+  };
+
+  /**
+   * Update an invoice's status along the allowed transition path. Jumps to
+   * PAID / PARTIALLY_PAID are rejected (record a payment instead). Cancelling an
+   * invoice releases its orders so they can be re-invoiced.
+   */
   async updateStatus(
     businessId: string,
     invoiceId: string,
     status: InvoiceStatus,
   ): Promise<IInvoice> {
-    await this.getById(businessId, invoiceId);
+    const invoice = await this.getById(businessId, invoiceId);
+
+    if (invoice.status === status) {
+      return invoice;
+    }
+
+    if (
+      status === InvoiceStatus.PAID ||
+      status === InvoiceStatus.PARTIALLY_PAID
+    ) {
+      throw new BadRequestException(
+        'Payment status is set by recording a payment, not directly.',
+      );
+    }
+
+    const allowed = InvoiceService.INVOICE_TRANSITIONS[invoice.status];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Cannot change invoice status from ${invoice.status} to ${status}.`,
+      );
+    }
+
     const updated = await this.invoiceRepository.update(businessId, invoiceId, {
       status,
     });
     if (!updated) {
       throw new NotFoundException('Invoice not found.');
     }
+
+    // Releasing the orders lets them be billed again on a new invoice.
+    if (status === InvoiceStatus.CANCELLED && invoice.orderIds.length > 0) {
+      await this.orderService.detachInvoice(businessId, invoice.orderIds);
+    }
+
     return updated;
   }
 

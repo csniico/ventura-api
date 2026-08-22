@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client, type TokenPayload } from 'google-auth-library';
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomInt, randomUUID } from 'crypto';
 import appleSignin from 'apple-signin-auth';
 import * as argon2 from 'argon2';
 import { UserServiceV2 } from '../user/application/user.service';
@@ -118,7 +118,8 @@ export class AuthService {
 
   /** Generate a 6-digit numeric code (zero-padded). */
   private generateCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    // CSPRNG — sign-in codes must not be predictable from observed values.
+    return randomInt(100000, 1000000).toString();
   }
 
   /**

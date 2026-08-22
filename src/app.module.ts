@@ -1,5 +1,8 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -32,6 +35,13 @@ import { PostgreSqlDriver } from '@mikro-orm/postgresql';
       delimiter: '.',
       maxListeners: 10,
     }),
+    // Global rate limiting (per client IP). A sane default cap protects every
+    // route; auth/code endpoints add their own tighter `@Throttle(...)`.
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
+    }),
+    // Enables @Cron jobs (e.g. the daily invoice-overdue sweep).
+    ScheduleModule.forRoot(),
     MikroOrmModule.forRootAsync({
       driver: PostgreSqlDriver,
       useFactory: (configService: ConfigService) => {
@@ -71,7 +81,7 @@ import { PostgreSqlDriver } from '@mikro-orm/postgresql';
     SetupModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import type { FilterQuery } from '@mikro-orm/core';
-import { DailyRevenue, IInvoice } from '../domain/invoice.entity';
+import { DailyRevenue, IInvoice, InvoiceStatus } from '../domain/invoice.entity';
 import {
   ICreateInvoice,
   IUpdateInvoice,
@@ -166,5 +166,17 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
         [businessId, from, to],
       );
     return rows.map((r) => ({ date: r.date, amount: Number(r.amount) }));
+  }
+
+  async markOverdue(now: Date): Promise<number> {
+    // A null dueDate never matches $lt, so unscheduled invoices are left alone.
+    return this.em.nativeUpdate(
+      PostgresInvoiceEntity,
+      {
+        status: { $in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID] },
+        dueDate: { $lt: now },
+      },
+      { status: InvoiceStatus.OVERDUE },
+    );
   }
 }

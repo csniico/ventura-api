@@ -1,14 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { randomInt } from 'node:crypto';
 import * as argon2 from 'argon2';
 import { IUser } from '../domain/user.entity';
 import { USER_DATA_SOURCE } from '../domain/user.repository';
@@ -65,7 +66,8 @@ export class UserServiceV2 {
 
   /** Generate a 6-digit numeric code (zero-padded), stored as a string. */
   private generateCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    // CSPRNG — a predictable code weakens the email-change confirmation flow.
+    return randomInt(100000, 1000000).toString();
   }
 
   /**
@@ -89,6 +91,18 @@ export class UserServiceV2 {
   private async getUserOrThrow(userId: string): Promise<IUser> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    return user;
+  }
+
+  /**
+   * Like {@link getUserOrThrow} but rejects soft-deleted accounts, so a deleted
+   * account cannot still be mutated (profile/avatar/name/email/business).
+   */
+  private async getActiveUserOrThrow(userId: string): Promise<IUser> {
+    const user = await this.getUserOrThrow(userId);
+    if (user.deleted) {
       throw new NotFoundException('User not found.');
     }
     return user;
@@ -367,7 +381,7 @@ export class UserServiceV2 {
    */
   async createPassword(dto: CreatePasswordDto): Promise<IUser> {
     const user = await this.userRepository.findById(dto.userId);
-    if (!user || user.email !== this.normalizeEmail(dto.email)) {
+    if (!user || user.deleted || user.email !== this.normalizeEmail(dto.email)) {
       throw new NotFoundException('User not found.');
     }
     if (user.password) {
@@ -391,6 +405,7 @@ export class UserServiceV2 {
     const user = await this.userRepository.findById(dto.userId);
     if (
       !user ||
+      user.deleted ||
       user.email !== this.normalizeEmail(dto.email) ||
       !user.password
     ) {
@@ -413,7 +428,7 @@ export class UserServiceV2 {
    * - Throws Conflict if the user already has a businessId.
    */
   async setBusinessId(userId: string, businessId: string): Promise<IUser> {
-    const user = await this.getUserOrThrow(userId);
+    const user = await this.getActiveUserOrThrow(userId);
     if (user.businessId) {
       throw new ConflictException('id already exists');
     }
@@ -424,6 +439,7 @@ export class UserServiceV2 {
 
   /** Update a user's first name. */
   async updateFirstName(userId: string, firstName: string): Promise<IUser> {
+    await this.getActiveUserOrThrow(userId);
     const updated = await this.userRepository.update(userId, { firstName });
     if (!updated) {
       throw new NotFoundException('User not found.');
@@ -436,6 +452,7 @@ export class UserServiceV2 {
     userId: string,
     lastName: string | null,
   ): Promise<IUser> {
+    await this.getActiveUserOrThrow(userId);
     const updated = await this.userRepository.update(userId, {
       lastName: lastName ?? null,
     });
@@ -473,7 +490,7 @@ export class UserServiceV2 {
     avatarUrl: string | null,
     avatarKey: string | null,
   ): Promise<IUser> {
-    const user = await this.getUserOrThrow(userId);
+    const user = await this.getActiveUserOrThrow(userId);
     const oldKey = user.avatarKey;
 
     const updated = await this.userRepository.update(userId, {
@@ -490,6 +507,7 @@ export class UserServiceV2 {
    * avatarUrl may be set to null to clear them.
    */
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<IUser> {
+    await this.getActiveUserOrThrow(userId);
     const patch = {
       ...(dto.firstName !== undefined ? { firstName: dto.firstName } : {}),
       ...(dto.lastName !== undefined ? { lastName: dto.lastName ?? null } : {}),
@@ -547,9 +565,10 @@ export class UserServiceV2 {
     const withinWindow = Date.now() - deletedAt <= windowMs;
 
     if (!withinWindow) {
-      throw new ForbiddenException(
-        'Account deletion window has passed; the account can no longer be restored.',
-      );
+      // Generic 401 (same as a bad password) so an expired-deleted account is
+      // indistinguishable from invalid credentials — no account-existence or
+      // status-code oracle on the sign-in path.
+      throw new UnauthorizedException('Invalid credentials.');
     }
 
     const saved = await this.userRepository.update(userId, {
@@ -578,7 +597,7 @@ export class UserServiceV2 {
     userId: string,
     newEmail: string,
   ): Promise<MessageResponse> {
-    const user = await this.getUserOrThrow(userId);
+    const user = await this.getActiveUserOrThrow(userId);
     const normalized = this.normalizeEmail(newEmail);
 
     if (normalized === user.email) {
@@ -633,7 +652,7 @@ export class UserServiceV2 {
       throw new BadRequestException('Invalid or expired code.');
     }
 
-    const user = await this.getUserOrThrow(userId);
+    const user = await this.getActiveUserOrThrow(userId);
 
     // Re-check the target address wasn't claimed by someone else in the meantime.
     const existing = await this.userRepository.findByEmail(pending.newEmail);

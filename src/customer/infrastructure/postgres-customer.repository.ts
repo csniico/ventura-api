@@ -51,9 +51,12 @@ export class PostgresCustomerRepository implements CustomerRepository {
   }
 
   async emailExists(businessId: string, email: string): Promise<boolean> {
+    // Case-insensitive exact match (wildcards escaped so it stays exact), so
+    // "Jane@x.com" and "jane@x.com" are treated as the same address — matching
+    // the case-insensitive within-batch dedup in the service layer.
     const count = await this.em.count(PostgresCustomerEntity, {
       businessId,
-      email,
+      email: { $ilike: escapeLike(email) },
     });
     return count > 0;
   }

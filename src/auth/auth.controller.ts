@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -36,6 +37,8 @@ export class AuthController {
   /** Sign in with email + password. Returns access + refresh tokens and the user. */
   @ApiOperation({ summary: 'Sign in with email and password' })
   @ApiResponse({ status: 200, type: AuthResponse })
+  // Tight cap: throttle password-guessing attempts per IP.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
   @Post('/sign-in-password')
   async signInWithPassword(@Body() dto: SignInPasswordDto) {
@@ -45,6 +48,8 @@ export class AuthController {
   /** Passwordless: request a 6-digit sign-in code by email. */
   @ApiOperation({ summary: 'Request a passwordless sign-in code by email' })
   @ApiResponse({ status: 200, type: MessageResponse })
+  // Tight cap: limits mail-bombing an address with sign-in codes.
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
   @Post('/sign-in-email')
   async signInWithEmail(@Body() dto: SignInEmailDto) {
@@ -54,6 +59,8 @@ export class AuthController {
   /** Verify the emailed code and sign in. Returns tokens and the user. */
   @ApiOperation({ summary: 'Verify an emailed code and sign in' })
   @ApiResponse({ status: 200, type: AuthResponse })
+  // Tight cap: makes the 6-digit code space impractical to brute-force.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
   @Post('/verify-code')
   async verifyCode(@Body() dto: VerifyCodeDto) {

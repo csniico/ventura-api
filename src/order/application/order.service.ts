@@ -151,9 +151,22 @@ export class OrderService {
   }
 
   /**
-   * Update an order's status. Cancelling a non-cancelled order restores the
-   * product stock it reserved. Status changes on an already-cancelled order are
-   * rejected.
+   * Legal order status transitions. CANCELLED is terminal, and a COMPLETED
+   * order can only be cancelled — never reopened to PENDING, which would let
+   * {@link updateItems} re-price and re-reconcile stock on finished work.
+   */
+  private static readonly ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> =
+    {
+      [OrderStatus.PENDING]: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+      [OrderStatus.COMPLETED]: [OrderStatus.CANCELLED],
+      [OrderStatus.CANCELLED]: [],
+    };
+
+  /**
+   * Update an order's status along the allowed transition path. Cancelling a
+   * non-cancelled order restores the product stock it reserved. Cancelling an
+   * order that is already on an invoice is rejected (cancel the invoice first,
+   * which detaches its orders).
    */
   async updateStatus(
     businessId: string,
@@ -162,14 +175,23 @@ export class OrderService {
   ): Promise<IOrder> {
     const order = await this.getById(businessId, orderId);
 
-    if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException('A cancelled order cannot change status.');
-    }
     if (order.status === status) {
       return order;
     }
 
+    const allowed = OrderService.ORDER_TRANSITIONS[order.status];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Cannot change order status from ${order.status} to ${status}.`,
+      );
+    }
+
     if (status === OrderStatus.CANCELLED) {
+      if (order.invoiceId) {
+        throw new BadRequestException(
+          'Cannot cancel an order that is on an invoice; cancel the invoice first.',
+        );
+      }
       await this.restoreStock(
         businessId,
         order.items

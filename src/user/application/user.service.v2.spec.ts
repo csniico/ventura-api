@@ -3,8 +3,8 @@ import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { UserServiceV2 } from './user.service';
@@ -626,7 +626,7 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
       );
     });
 
-    it('throws Forbidden for a user deleted 100 days ago', async () => {
+    it('throws Unauthorized for a user deleted 100 days ago', async () => {
       const user = await service.createWithEmail({
         firstName: 'Stale',
         email: 'react-stale@example.com',
@@ -638,7 +638,7 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
 
       await expect(
         service.reactivateIfWithinWindow(String(user.id)),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).rejects.toBeInstanceOf(UnauthorizedException);
       expect(users._get(user.id)?.deleted).toBe(true);
     });
   });

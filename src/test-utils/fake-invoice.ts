@@ -145,6 +145,20 @@ export class FakeInvoiceRepository implements InvoiceRepository {
     );
   }
 
+  markOverdue(now: Date): Promise<number> {
+    let count = 0;
+    for (const i of this.rows.values()) {
+      const overduable =
+        i.status === InvoiceStatus.SENT ||
+        i.status === InvoiceStatus.PARTIALLY_PAID;
+      if (overduable && i.dueDate && i.dueDate < now) {
+        this.rows.set(i.id, { ...i, status: InvoiceStatus.OVERDUE });
+        count += 1;
+      }
+    }
+    return Promise.resolve(count);
+  }
+
   // --- Test-only helpers (not part of the port) ---
   _clear(): void {
     this.rows.clear();

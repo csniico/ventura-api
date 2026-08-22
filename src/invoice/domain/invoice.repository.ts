@@ -74,6 +74,11 @@ export interface InvoiceRepository {
     from: Date,
     to: Date,
   ): Promise<DailyRevenue[]>;
+  /**
+   * Flip every past-due SENT / PARTIALLY_PAID invoice (dueDate < now) to
+   * OVERDUE across all businesses. Returns the number of rows updated.
+   */
+  markOverdue(now: Date): Promise<number>;
 }
 
 // Token for Nest DI (interfaces have no runtime representation to bind against).
