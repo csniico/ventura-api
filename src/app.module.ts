@@ -45,20 +45,19 @@ import { UserModule } from './user/user.module'
     MikroOrmModule.forRootAsync({
       driver: PostgreSqlDriver,
       useFactory: (configService: ConfigService) => {
-        const host = configService.get<string>('PG_HOST', 'localhost')
-        const password = configService.get<string>(
-          'PG_PASSWORD',
-          'adminUser!234',
-        )
-        const dbName = configService.get<string>('PG_DBNAME', 'ventura_dev')
-        const user = configService.get<string>('PG_USER', 'postgres')
+        // const host = configService.get<string>('PG_HOST')
+        // const password = configService.get<string>('PG_PASSWORD')
+        // const dbName = configService.get<string>('PG_DBNAME')
+        // const user = configService.get<string>('PG_USER')
+        const clientUri = configService.get<string>('PG_URI');
         return {
           driver: PostgreSqlDriver,
-          dbName: dbName,
-          user: user,
-          password: password,
-          host: host,
-          port: 5432,
+          clientUrl: clientUri,
+          driverOptions: {
+            ssl: {
+              rejectUnauthorized: false
+            }
+          },
           autoLoadEntities: true,
           schema: 'public',
         }
