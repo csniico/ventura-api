@@ -1,16 +1,16 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from '../user/user.module';
-import { MailModule } from '../mail/mail.module';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy';
-import { PostgresVerificationCodeEntity } from './domain/postgres.verification-code-entity';
-import { VERIFICATION_CODE_DATA_SOURCE } from './domain/verification-code.repository';
-import { PostgresVerificationCodeRepository } from './infrastructure/postgres-verification-code.repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { JwtModule } from '@nestjs/jwt'
+import { PassportModule } from '@nestjs/passport'
+import { MailModule } from '../mail/mail.module'
+import { UserModule } from '../user/user.module'
+import { AuthController } from './auth.controller'
+import { AuthService } from './auth.service'
+import { PostgresVerificationCodeEntity } from './domain/postgres.verification-code-entity'
+import { VERIFICATION_CODE_DATA_SOURCE } from './domain/verification-code.repository'
+import { PostgresVerificationCodeRepository } from './infrastructure/postgres-verification-code.repository'
+import { JwtStrategy } from './strategies/jwt.strategy'
+import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy'
 
 @Module({
   imports: [

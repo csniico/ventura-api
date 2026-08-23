@@ -4,10 +4,10 @@
  * email's code and consuming it on verify keep the table bounded.
  */
 export interface IVerificationCode {
-  id: string;
-  email: string;
-  code: string;
-  expiresAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string
+  email: string
+  code: string
+  expiresAt: Date
+  createdAt: Date
+  updatedAt: Date
 }

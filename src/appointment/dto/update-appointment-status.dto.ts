@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum } from 'class-validator';
-import { AppointmentStatus } from '../domain/appointment.entity';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEnum } from 'class-validator'
+import { AppointmentStatus } from '../domain/appointment.entity'
 
 /** Move an appointment to a new lifecycle status. */
 export class UpdateAppointmentStatusDto {
@@ -9,5 +9,5 @@ export class UpdateAppointmentStatusDto {
     example: AppointmentStatus.COMPLETED,
   })
   @IsEnum(AppointmentStatus)
-  status!: AppointmentStatus;
+  status!: AppointmentStatus
 }

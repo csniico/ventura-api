@@ -1,5 +1,5 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
 
 /**
  * Postgres mapping for a platform admin (MikroORM v7 schema-first
@@ -27,6 +27,6 @@ export const PostgresAdminEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresAdmin = InferEntity<typeof PostgresAdminEntity>;
+export type PostgresAdmin = InferEntity<typeof PostgresAdminEntity>

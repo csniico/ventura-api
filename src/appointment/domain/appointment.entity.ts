@@ -14,16 +14,16 @@ export enum AppointmentStatus {
 
 /** Someone invited: either a linked customer (customerId) or an ad-hoc email. */
 export interface Invitee {
-  name: string;
-  email?: string | null;
-  customerId?: string | null;
+  name: string
+  email?: string | null
+  customerId?: string | null
 }
 
 /** Recurrence rule: repeat every `interval` `frequency` units until `until`. */
 export interface Recurrence {
-  frequency: RecurrenceFrequency;
-  interval: number;
-  until?: Date | null;
+  frequency: RecurrenceFrequency
+  interval: number
+  until?: Date | null
 }
 
 /**
@@ -32,18 +32,18 @@ export interface Recurrence {
  * the recurrence rule are embedded (stored as jsonb).
  */
 export interface IAppointment {
-  id: string;
-  shortId: string;
-  businessId: string;
-  createdBy: string;
-  title: string;
-  start: Date;
-  end: Date;
-  notes?: string | null;
-  location?: string | null;
-  invitees: Invitee[];
-  recurrence?: Recurrence | null;
-  status: AppointmentStatus;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string
+  shortId: string
+  businessId: string
+  createdBy: string
+  title: string
+  start: Date
+  end: Date
+  notes?: string | null
+  location?: string | null
+  invitees: Invitee[]
+  recurrence?: Recurrence | null
+  status: AppointmentStatus
+  createdAt: Date
+  updatedAt: Date
 }

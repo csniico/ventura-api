@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator'
 
 /**
  * Email signup: the user provides only their first name and email.
@@ -10,13 +10,13 @@ export class CreateUserWithEmailDto {
   @ApiProperty({ example: 'Ada' })
   @IsString()
   @IsNotEmpty()
-  firstName!: string;
+  firstName!: string
 
   @ApiProperty({ example: 'ada@example.com', format: 'email' })
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 }
 
 /**
@@ -27,26 +27,26 @@ export class CreateUserWithGoogleDto {
   @ApiProperty({ example: 'Ada' })
   @IsString()
   @IsNotEmpty()
-  firstName!: string;
+  firstName!: string
 
   @ApiProperty({ required: false, example: 'Lovelace' })
   @IsString()
   @IsOptional()
-  lastName?: string;
+  lastName?: string
 
   @ApiProperty({ example: 'ada@example.com', format: 'email' })
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 
   @ApiProperty({ example: 'google-oauth2|1234567890' })
   @IsString()
   @IsNotEmpty()
-  googleId!: string;
+  googleId!: string
 
   @ApiProperty({ required: false, example: 'https://example.com/a.png' })
   @IsString()
   @IsOptional()
-  avatarUrl?: string;
+  avatarUrl?: string
 }

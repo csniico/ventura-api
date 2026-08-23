@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 import {
   IsArray,
   IsInt,
@@ -8,7 +8,7 @@ import {
   IsOptional,
   IsString,
   Min,
-} from 'class-validator';
+} from 'class-validator'
 
 /**
  * Update a resource. Every field is optional and applied individually.
@@ -19,13 +19,13 @@ export class UpdateResourceDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  name?: string;
+  name?: string
 
   @ApiProperty({ required: false, example: 9.99 })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  price?: number;
+  price?: number
 
   @ApiProperty({
     required: false,
@@ -33,7 +33,7 @@ export class UpdateResourceDto {
   })
   @IsOptional()
   @IsString()
-  primaryImage?: string;
+  primaryImage?: string
 
   @ApiProperty({
     required: false,
@@ -43,7 +43,7 @@ export class UpdateResourceDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  supportingImages?: string[];
+  supportingImages?: string[]
 
   @ApiProperty({
     required: false,
@@ -51,7 +51,7 @@ export class UpdateResourceDto {
   })
   @IsOptional()
   @IsString()
-  primaryImageKey?: string;
+  primaryImageKey?: string
 
   @ApiProperty({
     required: false,
@@ -61,31 +61,31 @@ export class UpdateResourceDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  supportingImageKeys?: string[];
+  supportingImageKeys?: string[]
 
   @ApiProperty({ required: false, example: 'Single-origin medium roast.' })
   @IsOptional()
   @IsString()
-  description?: string;
+  description?: string
 
   @ApiProperty({ required: false, example: 'Store in a cool, dry place.' })
   @IsOptional()
   @IsString()
-  notes?: string;
+  notes?: string
 
   // Product-only.
   @ApiProperty({ required: false, example: 100 })
   @IsOptional()
   @IsInt()
   @Min(0)
-  availableQuantity?: number;
+  availableQuantity?: number
 
   // Product-only: reorder point for low-stock alerts.
   @ApiProperty({ required: false, example: 5 })
   @IsOptional()
   @IsInt()
   @Min(0)
-  lowStockThreshold?: number;
+  lowStockThreshold?: number
 
   // Service-only.
   @ApiProperty({
@@ -95,5 +95,5 @@ export class UpdateResourceDto {
   })
   @IsOptional()
   @IsObject()
-  businessHours?: Record<string, { open: string; close: string }>;
+  businessHours?: Record<string, { open: string; close: string }>
 }

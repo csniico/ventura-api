@@ -6,8 +6,8 @@ export enum UserRole {
 }
 
 export interface ImageResource {
-  fileUrl: string;
-  fileKey: string;
+  fileUrl: string
+  fileKey: string
 }
 
 /**
@@ -18,25 +18,25 @@ export interface ImageResource {
  * layer decides what reaches the client.
  */
 export interface IUser {
-  id: string;
-  shortId: string;
-  role: UserRole;
-  firstName: string;
-  lastName?: string | null;
-  email: string;
-  googleId?: string | null;
-  appleId?: string | null;
+  id: string
+  shortId: string
+  role: UserRole
+  firstName: string
+  lastName?: string | null
+  email: string
+  googleId?: string | null
+  appleId?: string | null
   // Internal auth fields — stripped before any response.
-  password?: string | null;
-  hashedRefreshToken?: string | null;
-  avatarUrl?: string | null;
-  avatarKey?: string | null;
-  businessId?: string | null;
-  isSystem: boolean;
-  isActive: boolean;
-  isEmailVerified: boolean;
-  deleted: boolean;
-  deletedAt?: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  password?: string | null
+  hashedRefreshToken?: string | null
+  avatarUrl?: string | null
+  avatarKey?: string | null
+  businessId?: string | null
+  isSystem: boolean
+  isActive: boolean
+  isEmailVerified: boolean
+  deleted: boolean
+  deletedAt?: Date | null
+  createdAt: Date
+  updatedAt: Date
 }

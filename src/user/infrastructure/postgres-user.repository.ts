@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/postgresql';
-import { IUser } from '../domain/user.entity';
+import { EntityManager } from '@mikro-orm/postgresql'
+import { Injectable } from '@nestjs/common'
+import {
+  PostgresUser,
+  PostgresUserEntity,
+} from '../domain/postgres.user-entity'
+import { IUser } from '../domain/user.entity'
 import {
   ICreateUser,
   IUpdateUser,
   UserRepository,
-} from '../domain/user.repository';
-import {
-  PostgresUser,
-  PostgresUserEntity,
-} from '../domain/postgres.user-entity';
+} from '../domain/user.repository'
 
 @Injectable()
 export class PostgresUserRepository implements UserRepository {
@@ -42,22 +42,22 @@ export class PostgresUserRepository implements UserRepository {
       deletedAt: entity.deletedAt,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-    };
+    }
   }
 
   async findById(id: string): Promise<IUser | null> {
-    const user = await this.em.findOne(PostgresUserEntity, { id });
-    return user ? this.toDomain(user) : null;
+    const user = await this.em.findOne(PostgresUserEntity, { id })
+    return user ? this.toDomain(user) : null
   }
 
   async findByEmail(email: string): Promise<IUser | null> {
-    const user = await this.em.findOne(PostgresUserEntity, { email });
-    return user ? this.toDomain(user) : null;
+    const user = await this.em.findOne(PostgresUserEntity, { email })
+    return user ? this.toDomain(user) : null
   }
 
   async findByAppleId(appleId: string): Promise<IUser | null> {
-    const user = await this.em.findOne(PostgresUserEntity, { appleId });
-    return user ? this.toDomain(user) : null;
+    const user = await this.em.findOne(PostgresUserEntity, { appleId })
+    return user ? this.toDomain(user) : null
   }
 
   async list(): Promise<IUser[]> {
@@ -65,35 +65,35 @@ export class PostgresUserRepository implements UserRepository {
       PostgresUserEntity,
       {},
       { orderBy: { createdAt: 'DESC' } },
-    );
-    return users.map((u) => this.toDomain(u));
+    )
+    return users.map((u) => this.toDomain(u))
   }
 
   async create(data: ICreateUser): Promise<IUser> {
-    const user = this.em.create(PostgresUserEntity, data);
-    await this.em.flush();
-    return this.toDomain(user);
+    const user = this.em.create(PostgresUserEntity, data)
+    await this.em.flush()
+    return this.toDomain(user)
   }
 
   async update(id: string, patch: IUpdateUser): Promise<IUser | null> {
-    const user = await this.em.findOne(PostgresUserEntity, { id });
+    const user = await this.em.findOne(PostgresUserEntity, { id })
     if (!user) {
-      return null;
+      return null
     }
     // `assign` only touches keys present in `patch`: an explicit null clears the
     // column, an absent key is left untouched.
-    this.em.assign(user, patch);
-    await this.em.flush();
-    return this.toDomain(user);
+    this.em.assign(user, patch)
+    await this.em.flush()
+    return this.toDomain(user)
   }
 
   async hardDelete(id: string): Promise<IUser | null> {
-    const user = await this.em.findOne(PostgresUserEntity, { id });
+    const user = await this.em.findOne(PostgresUserEntity, { id })
     if (!user) {
-      return null;
+      return null
     }
-    const removed = this.toDomain(user);
-    await this.em.nativeDelete(PostgresUserEntity, { id });
-    return removed;
+    const removed = this.toDomain(user)
+    await this.em.nativeDelete(PostgresUserEntity, { id })
+    return removed
   }
 }

@@ -3,22 +3,22 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { ICustomer } from '../domain/customer.entity';
-import { CUSTOMER_DATA_SOURCE } from '../domain/customer.repository';
-import type { CustomerRepository } from '../domain/customer.repository';
-import { CreateCustomerDto } from '../dto/create-customer.dto';
-import { UpdateCustomerDto } from '../dto/update-customer.dto';
+} from '@nestjs/common'
 import {
-  Paginated,
   normalizePaging,
+  Paginated,
   paginate,
-} from '../../common/dto/paginated';
+} from '../../common/dto/paginated'
+import { ICustomer } from '../domain/customer.entity'
+import type { CustomerRepository } from '../domain/customer.repository'
+import { CUSTOMER_DATA_SOURCE } from '../domain/customer.repository'
+import { CreateCustomerDto } from '../dto/create-customer.dto'
+import { UpdateCustomerDto } from '../dto/update-customer.dto'
 
 export interface BulkImportResult {
-  created: ICustomer[];
-  skipped: { index: number; reason: string }[];
-  failed: { index: number; reason: string }[];
+  created: ICustomer[]
+  skipped: { index: number; reason: string }[]
+  failed: { index: number; reason: string }[]
 }
 
 /**
@@ -44,9 +44,9 @@ export class CustomerService {
       dto.email &&
       (await this.customerRepository.emailExists(businessId, dto.email))
     ) {
-      throw new ConflictException('A customer with this email already exists.');
+      throw new ConflictException('A customer with this email already exists.')
     }
-    return this.customerRepository.create({ businessId, ...dto });
+    return this.customerRepository.create({ businessId, ...dto })
   }
 
   /**
@@ -59,41 +59,41 @@ export class CustomerService {
     businessId: string,
     customers: CreateCustomerDto[],
   ): Promise<BulkImportResult> {
-    const result: BulkImportResult = { created: [], skipped: [], failed: [] };
+    const result: BulkImportResult = { created: [], skipped: [], failed: [] }
 
     // Flag within-batch email duplicates (case-insensitive).
-    const seenEmails = new Set<string>();
+    const seenEmails = new Set<string>()
     const isBatchDuplicate = customers.map((dto) => {
-      const email = dto.email?.toLowerCase();
-      if (!email) return false;
-      if (seenEmails.has(email)) return true;
-      seenEmails.add(email);
-      return false;
-    });
+      const email = dto.email?.toLowerCase()
+      if (!email) return false
+      if (seenEmails.has(email)) return true
+      seenEmails.add(email)
+      return false
+    })
 
     for (let index = 0; index < customers.length; index++) {
-      const dto = customers[index];
+      const dto = customers[index]
       try {
         if (
           isBatchDuplicate[index] ||
           (dto.email &&
             (await this.customerRepository.emailExists(businessId, dto.email)))
         ) {
-          result.skipped.push({ index, reason: 'Duplicate email.' });
-          continue;
+          result.skipped.push({ index, reason: 'Duplicate email.' })
+          continue
         }
         const created = await this.customerRepository.create({
           businessId,
           ...dto,
-        });
-        result.created.push(created);
+        })
+        result.created.push(created)
       } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        result.failed.push({ index, reason });
+        const reason = error instanceof Error ? error.message : String(error)
+        result.failed.push({ index, reason })
       }
     }
 
-    return result;
+    return result
   }
 
   /**
@@ -104,13 +104,13 @@ export class CustomerService {
     businessId: string,
     opts: { page?: number; limit?: number; q?: string } = {},
   ): Promise<Paginated<ICustomer>> {
-    const { page, limit, skip } = normalizePaging(opts.page, opts.limit);
+    const { page, limit, skip } = normalizePaging(opts.page, opts.limit)
     const { data, total } = await this.customerRepository.list(businessId, {
       skip,
       limit,
       q: opts.q,
-    });
-    return paginate(data, total, page, limit);
+    })
+    return paginate(data, total, page, limit)
   }
 
   /**
@@ -121,11 +121,11 @@ export class CustomerService {
     const customer = await this.customerRepository.findById(
       businessId,
       customerId,
-    );
+    )
     if (!customer) {
-      throw new NotFoundException('Customer not found.');
+      throw new NotFoundException('Customer not found.')
     }
-    return customer;
+    return customer
   }
 
   /**
@@ -138,33 +138,30 @@ export class CustomerService {
     customerId: string,
     dto: UpdateCustomerDto,
   ): Promise<ICustomer> {
-    const customer = await this.getById(businessId, customerId);
+    const customer = await this.getById(businessId, customerId)
 
     if (
       dto.email &&
       dto.email !== customer.email &&
       (await this.customerRepository.emailExists(businessId, dto.email))
     ) {
-      throw new ConflictException('A customer with this email already exists.');
+      throw new ConflictException('A customer with this email already exists.')
     }
 
     const updated = await this.customerRepository.update(
       businessId,
       customerId,
       dto,
-    );
-    return updated ?? customer;
+    )
+    return updated ?? customer
   }
 
   /** Delete a customer, scoped to the business. Throws NotFound if missing. */
   async delete(businessId: string, customerId: string): Promise<ICustomer> {
-    const removed = await this.customerRepository.delete(
-      businessId,
-      customerId,
-    );
+    const removed = await this.customerRepository.delete(businessId, customerId)
     if (!removed) {
-      throw new NotFoundException('Customer not found.');
+      throw new NotFoundException('Customer not found.')
     }
-    return removed;
+    return removed
   }
 }

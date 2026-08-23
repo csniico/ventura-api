@@ -1,5 +1,5 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateCustomerDto } from './create-customer.dto';
+import { PartialType } from '@nestjs/swagger'
+import { CreateCustomerDto } from './create-customer.dto'
 
 /**
  * Update a customer. All fields optional — the frontend sends only the

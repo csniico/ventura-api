@@ -1,12 +1,12 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from '../user/user.module';
-import { CustomerModule } from '../customer/customer.module';
-import { AppointmentService } from './application/appointment.service';
-import { AppointmentController } from './application/appointment.controller';
-import { PostgresAppointmentEntity } from './domain/postgres.appointment-entity';
-import { APPOINTMENT_DATA_SOURCE } from './domain/appointment.repository';
-import { PostgresAppointmentRepository } from './infrastructure/postgres-appointment.repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { CustomerModule } from '../customer/customer.module'
+import { UserModule } from '../user/user.module'
+import { AppointmentController } from './application/appointment.controller'
+import { AppointmentService } from './application/appointment.service'
+import { APPOINTMENT_DATA_SOURCE } from './domain/appointment.repository'
+import { PostgresAppointmentEntity } from './domain/postgres.appointment-entity'
+import { PostgresAppointmentRepository } from './infrastructure/postgres-appointment.repository'
 
 @Module({
   imports: [

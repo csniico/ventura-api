@@ -1,4 +1,4 @@
-import { FileStorageService } from '../file-storage/file-storage.service';
+import { FileStorageService } from '../file-storage/file-storage.service'
 
 /**
  * A NestJS provider that supplies a mocked FileStorageService for tests, so
@@ -11,4 +11,4 @@ export const mockFileStorageProvider = {
     deleteFile: jest.fn().mockResolvedValue({ fileKey: 'mock' }),
     createPresignedUpload: jest.fn(),
   },
-};
+}

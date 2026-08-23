@@ -1,15 +1,15 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { FileStorageModule } from '../file-storage/file-storage.module';
-import { MailModule } from '../mail/mail.module';
-import { PostgresUserEntity } from './domain/postgres.user-entity';
-import { PostgresEmailChangeEntity } from './domain/postgres.email-change-entity';
-import { USER_DATA_SOURCE } from './domain/user.repository';
-import { EMAIL_CHANGE_DATA_SOURCE } from './domain/email-change.repository';
-import { PostgresUserRepository } from './infrastructure/postgres-user.repository';
-import { PostgresEmailChangeRepository } from './infrastructure/postgres-email-change.repository';
-import { UserControllerV2 } from './application/user.controller';
-import { UserServiceV2 } from './application/user.service';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { FileStorageModule } from '../file-storage/file-storage.module'
+import { MailModule } from '../mail/mail.module'
+import { UserControllerV2 } from './application/user.controller'
+import { UserServiceV2 } from './application/user.service'
+import { EMAIL_CHANGE_DATA_SOURCE } from './domain/email-change.repository'
+import { PostgresEmailChangeEntity } from './domain/postgres.email-change-entity'
+import { PostgresUserEntity } from './domain/postgres.user-entity'
+import { USER_DATA_SOURCE } from './domain/user.repository'
+import { PostgresEmailChangeRepository } from './infrastructure/postgres-email-change.repository'
+import { PostgresUserRepository } from './infrastructure/postgres-user.repository'
 
 @Module({
   imports: [

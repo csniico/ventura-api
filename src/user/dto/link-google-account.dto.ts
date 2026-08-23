@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger'
+import { Type } from 'class-transformer'
 import {
   IsEmail,
   IsEnum,
@@ -8,8 +8,8 @@ import {
   IsOptional,
   IsString,
   ValidateNested,
-} from 'class-validator';
-import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator';
+} from 'class-validator'
+import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator'
 
 /**
  * Per-field choice when linking a Google account to an existing user:
@@ -30,17 +30,17 @@ export class GoogleLinkPreferencesDto {
   @ApiProperty({ required: false, enum: LinkFieldAction })
   @IsOptional()
   @IsEnum(LinkFieldAction)
-  firstName?: LinkFieldAction;
+  firstName?: LinkFieldAction
 
   @ApiProperty({ required: false, enum: LinkFieldAction })
   @IsOptional()
   @IsEnum(LinkFieldAction)
-  lastName?: LinkFieldAction;
+  lastName?: LinkFieldAction
 
   @ApiProperty({ required: false, enum: LinkFieldAction })
   @IsOptional()
   @IsEnum(LinkFieldAction)
-  avatarUrl?: LinkFieldAction;
+  avatarUrl?: LinkFieldAction
 }
 
 export class LinkGoogleAccountDto {
@@ -48,32 +48,32 @@ export class LinkGoogleAccountDto {
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  googleId!: string;
+  googleId!: string
 
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
-  firstName?: string;
+  firstName?: string
 
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
-  lastName?: string;
+  lastName?: string
 
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
-  avatarUrl?: string;
+  avatarUrl?: string
 
   @ApiProperty({ required: false, type: () => GoogleLinkPreferencesDto })
   @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => GoogleLinkPreferencesDto)
-  preferences?: GoogleLinkPreferencesDto;
+  preferences?: GoogleLinkPreferencesDto
 }

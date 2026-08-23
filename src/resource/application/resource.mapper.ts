@@ -1,5 +1,5 @@
-import { IResource } from '../domain/resource.entity';
-import { ResourceResponse } from '../responses/resource.response';
+import { IResource } from '../domain/resource.entity'
+import { ResourceResponse } from '../responses/resource.response'
 
 /**
  * Project a domain `IResource` onto the public `ResourceResponse` contract,
@@ -24,5 +24,5 @@ export function toResourceResponse(resource: IResource): ResourceResponse {
     businessHours: resource.businessHours ?? null,
     createdAt: resource.createdAt,
     updatedAt: resource.updatedAt,
-  };
+  }
 }

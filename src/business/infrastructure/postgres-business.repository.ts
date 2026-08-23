@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/postgresql';
-import { IBusiness } from '../domain/business.entity';
+import { EntityManager } from '@mikro-orm/postgresql'
+import { Injectable } from '@nestjs/common'
+import { IBusiness } from '../domain/business.entity'
 import {
   BusinessRepository,
   ICreateBusiness,
   IUpdateBusiness,
-} from '../domain/business.repository';
+} from '../domain/business.repository'
 import {
   PostgresBusiness,
   PostgresBusinessEntity,
-} from '../domain/postgres.business-entity';
+} from '../domain/postgres.business-entity'
 
 @Injectable()
 export class PostgresBusinessRepository implements BusinessRepository {
@@ -41,42 +41,42 @@ export class PostgresBusinessRepository implements BusinessRepository {
       isActive: entity.isActive,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-    };
+    }
   }
 
   async findById(id: string): Promise<IBusiness | null> {
-    const business = await this.em.findOne(PostgresBusinessEntity, { id });
-    return business ? this.toDomain(business) : null;
+    const business = await this.em.findOne(PostgresBusinessEntity, { id })
+    return business ? this.toDomain(business) : null
   }
 
   async findByOwner(ownerId: string): Promise<IBusiness | null> {
-    const business = await this.em.findOne(PostgresBusinessEntity, { ownerId });
-    return business ? this.toDomain(business) : null;
+    const business = await this.em.findOne(PostgresBusinessEntity, { ownerId })
+    return business ? this.toDomain(business) : null
   }
 
   async create(data: ICreateBusiness): Promise<IBusiness> {
-    const business = this.em.create(PostgresBusinessEntity, data);
-    await this.em.flush();
-    return this.toDomain(business);
+    const business = this.em.create(PostgresBusinessEntity, data)
+    await this.em.flush()
+    return this.toDomain(business)
   }
 
   async update(id: string, patch: IUpdateBusiness): Promise<IBusiness | null> {
-    const business = await this.em.findOne(PostgresBusinessEntity, { id });
+    const business = await this.em.findOne(PostgresBusinessEntity, { id })
     if (!business) {
-      return null;
+      return null
     }
     // Drop keys whose value is `undefined` (a DTO instance carries every
     // optional field as undefined); MikroORM's assign rejects undefined values.
     // The remaining keys are written; an absent key is left untouched.
     const clean = Object.fromEntries(
       Object.entries(patch).filter(([, v]) => v !== undefined),
-    );
-    this.em.assign(business, clean);
-    await this.em.flush();
-    return this.toDomain(business);
+    )
+    this.em.assign(business, clean)
+    await this.em.flush()
+    return this.toDomain(business)
   }
 
   async delete(id: string): Promise<void> {
-    await this.em.nativeDelete(PostgresBusinessEntity, { id });
+    await this.em.nativeDelete(PostgresBusinessEntity, { id })
   }
 }

@@ -4,15 +4,15 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { UserServiceV2 } from '../../user/application/user.service';
-import { FileStorageService } from '../../file-storage/file-storage.service';
-import { IBusiness } from '../domain/business.entity';
-import { BUSINESS_DATA_SOURCE } from '../domain/business.repository';
-import type { BusinessRepository } from '../domain/business.repository';
-import { CreateBusinessDto } from '../dto/create-business.dto';
-import { UpdateBusinessDto } from '../dto/update-business.dto';
-import { SUGGESTED_CATEGORIES } from '../business.constants';
+} from '@nestjs/common'
+import { FileStorageService } from '../../file-storage/file-storage.service'
+import { UserServiceV2 } from '../../user/application/user.service'
+import { SUGGESTED_CATEGORIES } from '../business.constants'
+import { IBusiness } from '../domain/business.entity'
+import type { BusinessRepository } from '../domain/business.repository'
+import { BUSINESS_DATA_SOURCE } from '../domain/business.repository'
+import { CreateBusinessDto } from '../dto/create-business.dto'
+import { UpdateBusinessDto } from '../dto/update-business.dto'
 
 /**
  * Postgres-backed business service. Data access goes through the
@@ -22,7 +22,7 @@ import { SUGGESTED_CATEGORIES } from '../business.constants';
  */
 @Injectable()
 export class BusinessService {
-  private readonly logger = new Logger(BusinessService.name);
+  private readonly logger = new Logger(BusinessService.name)
 
   constructor(
     @Inject(BUSINESS_DATA_SOURCE)
@@ -33,7 +33,7 @@ export class BusinessService {
 
   /** Suggested categories for the UI (businesses may also use custom ones). */
   getCategories(): readonly string[] {
-    return SUGGESTED_CATEGORIES;
+    return SUGGESTED_CATEGORIES
   }
 
   /**
@@ -47,31 +47,31 @@ export class BusinessService {
       ownerId,
       categories: dto.categories ?? [],
       socials: {},
-    });
+    })
 
     try {
-      await this.userService.setBusinessId(ownerId, business.id);
+      await this.userService.setBusinessId(ownerId, business.id)
     } catch (err) {
       // Roll back the orphaned business if the owner couldn't be linked.
-      await this.businessRepository.delete(business.id);
-      throw err;
+      await this.businessRepository.delete(business.id)
+      throw err
     }
 
-    return business;
+    return business
   }
 
   /** Get a business by id. Throws NotFound if missing. */
   async getById(businessId: string): Promise<IBusiness> {
-    const business = await this.businessRepository.findById(businessId);
+    const business = await this.businessRepository.findById(businessId)
     if (!business) {
-      throw new NotFoundException('Business not found.');
+      throw new NotFoundException('Business not found.')
     }
-    return business;
+    return business
   }
 
   /** Get the business owned by a given user (or null if none). */
   async getByOwner(ownerId: string): Promise<IBusiness | null> {
-    return this.businessRepository.findByOwner(ownerId);
+    return await this.businessRepository.findByOwner(ownerId)
   }
 
   /**
@@ -83,24 +83,24 @@ export class BusinessService {
     ownerId: string,
     dto: UpdateBusinessDto,
   ): Promise<IBusiness> {
-    const business = await this.getById(businessId);
+    const business = await this.getById(businessId)
     if (business.ownerId !== ownerId) {
-      throw new ForbiddenException('You do not own this business.');
+      throw new ForbiddenException('You do not own this business.')
     }
 
-    const oldLogoKey = business.logoKey;
-    const updated = await this.businessRepository.update(businessId, dto);
-    const saved = updated ?? business;
+    const oldLogoKey = business.logoKey
+    const updated = await this.businessRepository.update(businessId, dto)
+    const saved = updated ?? business
 
     // If the logo changed, clean up the previous object (best-effort).
     if (dto.logoKey !== undefined && oldLogoKey && oldLogoKey !== dto.logoKey) {
       try {
-        await this.fileStorageService.deleteFile(oldLogoKey);
+        await this.fileStorageService.deleteFile(oldLogoKey)
       } catch (error) {
-        this.logger.error(`Failed to delete old logo ${oldLogoKey}`, error);
+        this.logger.error(`Failed to delete old logo ${oldLogoKey}`, error)
       }
     }
 
-    return saved;
+    return saved
   }
 }

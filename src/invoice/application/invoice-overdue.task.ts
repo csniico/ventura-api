@@ -1,8 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { MikroORM, RequestContext } from '@mikro-orm/core';
-import { INVOICE_DATA_SOURCE } from '../domain/invoice.repository';
-import type { InvoiceRepository } from '../domain/invoice.repository';
+import { MikroORM, RequestContext } from '@mikro-orm/core'
+import { Inject, Injectable, Logger } from '@nestjs/common'
+import { Cron, CronExpression } from '@nestjs/schedule'
+import type { InvoiceRepository } from '../domain/invoice.repository'
+import { INVOICE_DATA_SOURCE } from '../domain/invoice.repository'
 
 /**
  * Daily job that promotes past-due SENT / PARTIALLY_PAID invoices to OVERDUE.
@@ -11,7 +11,7 @@ import type { InvoiceRepository } from '../domain/invoice.repository';
  */
 @Injectable()
 export class InvoiceOverdueTask {
-  private readonly logger = new Logger(InvoiceOverdueTask.name);
+  private readonly logger = new Logger(InvoiceOverdueTask.name)
 
   constructor(
     private readonly orm: MikroORM,
@@ -24,10 +24,10 @@ export class InvoiceOverdueTask {
     // A cron tick has no HTTP request context, so wrap the work in a fresh EM
     // fork via RequestContext so the repository's context-bound EM resolves.
     await RequestContext.create(this.orm.em, async () => {
-      const count = await this.invoiceRepository.markOverdue(new Date());
+      const count = await this.invoiceRepository.markOverdue(new Date())
       if (count > 0) {
-        this.logger.log(`Marked ${count} invoice(s) as OVERDUE.`);
+        this.logger.log(`Marked ${count} invoice(s) as OVERDUE.`)
       }
-    });
+    })
   }
 }

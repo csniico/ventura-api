@@ -1,36 +1,36 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
-import { IMail, MailStatus, MailType } from './domain/mail.entity';
-import { MAIL_DATA_SOURCE } from './domain/mail.repository';
-import type { MailRepository } from './domain/mail.repository';
+import { Inject, Injectable, Logger } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { Resend } from 'resend'
+import { IMail, MailStatus, MailType } from './domain/mail.entity'
+import type { MailRepository } from './domain/mail.repository'
+import { MAIL_DATA_SOURCE } from './domain/mail.repository'
 import {
-  EmailContent,
   accountDeletedEmail,
+  EmailContent,
   existingUserSigninEmail,
   invoiceEmail,
-  passwordChangeRequestedEmail,
   passwordChangedEmail,
+  passwordChangeRequestedEmail,
   verificationCodeEmail,
   welcomeEmail,
-} from './templates';
+} from './templates'
 
 @Injectable()
 export class MailService {
-  private readonly logger = new Logger(MailService.name);
-  private readonly resend: Resend;
-  private readonly fromEmail: string;
+  private readonly logger = new Logger(MailService.name)
+  private readonly resend: Resend
+  private readonly fromEmail: string
 
   constructor(
     @Inject(MAIL_DATA_SOURCE)
     private readonly mailRepository: MailRepository,
     private readonly configService: ConfigService,
   ) {
-    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'))
     this.fromEmail = this.configService.get<string>(
       'RESEND_FROM_EMAIL',
       'Ventura <nii@support.csniico.com>',
-    );
+    )
   }
 
   /**
@@ -43,9 +43,9 @@ export class MailService {
     type: MailType,
     content: EmailContent,
   ): Promise<IMail> {
-    let status = MailStatus.SENT;
-    let providerId: string | null = null;
-    let error: string | null = null;
+    let status = MailStatus.SENT
+    let providerId: string | null = null
+    let error: string | null = null
 
     try {
       const result = await this.resend.emails.send({
@@ -53,18 +53,18 @@ export class MailService {
         to,
         subject: content.subject,
         html: content.html,
-      });
+      })
       if (result.error) {
-        status = MailStatus.FAILED;
-        error = result.error.message;
-        this.logger.error(`Resend error sending to ${to}: ${error}`);
+        status = MailStatus.FAILED
+        error = result.error.message
+        this.logger.error(`Resend error sending to ${to}: ${error}`)
       } else {
-        providerId = result.data?.id ?? null;
+        providerId = result.data?.id ?? null
       }
     } catch (err) {
-      status = MailStatus.FAILED;
-      error = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to send ${type} to ${to}: ${error}`);
+      status = MailStatus.FAILED
+      error = err instanceof Error ? err.message : String(err)
+      this.logger.error(`Failed to send ${type} to ${to}: ${error}`)
     }
 
     return this.mailRepository.create({
@@ -75,7 +75,7 @@ export class MailService {
       status,
       providerId,
       error,
-    });
+    })
   }
 
   /** Send a 6-digit verification code for passwordless email sign-in. */
@@ -84,25 +84,25 @@ export class MailService {
     code: string,
     expirationMinutes = 10,
   ): Promise<IMail> {
-    return this.send(
+    return await this.send(
       to,
       MailType.VERIFICATION_CODE,
       verificationCodeEmail(code, expirationMinutes),
-    );
+    )
   }
 
   /** Welcome a brand-new user. */
   async sendWelcome(to: string, firstName: string): Promise<IMail> {
-    return this.send(to, MailType.WELCOME, welcomeEmail(firstName));
+    return await this.send(to, MailType.WELCOME, welcomeEmail(firstName))
   }
 
   /** Notify when a sign-up is attempted for an already-registered email. */
   async sendExistingUserSignin(to: string, firstName: string): Promise<IMail> {
-    return this.send(
+    return await this.send(
       to,
       MailType.EXISTING_USER_SIGNIN,
       existingUserSigninEmail(firstName),
-    );
+    )
   }
 
   /**
@@ -114,11 +114,11 @@ export class MailService {
     firstName: string,
     graceDays = 90,
   ): Promise<IMail> {
-    return this.send(
+    return await this.send(
       to,
       MailType.ACCOUNT_DELETED,
       accountDeletedEmail(firstName, graceDays),
-    );
+    )
   }
 
   /** Notice that a password change was requested. */
@@ -126,32 +126,32 @@ export class MailService {
     to: string,
     firstName: string,
   ): Promise<IMail> {
-    return this.send(
+    return await this.send(
       to,
       MailType.PASSWORD_CHANGE_REQUESTED,
       passwordChangeRequestedEmail(firstName),
-    );
+    )
   }
 
   /** Security notice that a password was set or changed. */
   async sendPasswordChanged(to: string, firstName: string): Promise<IMail> {
-    return this.send(
+    return await this.send(
       to,
       MailType.PASSWORD_CHANGED,
       passwordChangedEmail(firstName),
-    );
+    )
   }
 
   /** Send a customer their invoice, with an optional custom message. */
   async sendInvoice(
     to: string,
     args: {
-      invoiceNumber: string;
-      customerName?: string | null;
-      totalAmount: number;
-      message?: string | null;
+      invoiceNumber: string
+      customerName?: string | null
+      totalAmount: number
+      message?: string | null
     },
   ): Promise<IMail> {
-    return this.send(to, MailType.INVOICE, invoiceEmail(args));
+    return await this.send(to, MailType.INVOICE, invoiceEmail(args))
   }
 }

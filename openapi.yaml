@@ -84,6 +84,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Set a password for a user that has none
       tags: *a1
     put:
@@ -102,6 +104,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Change an existing password
       tags: *a1
   /users/{id}/has-password:
@@ -138,6 +142,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Get a user by id
       tags: *a1
     delete:
@@ -155,6 +161,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Soft-delete the account
       tags: *a1
   /users/{id}/profile:
@@ -179,6 +187,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Bulk update profile fields
       tags: *a1
   /users/{id}/first-name:
@@ -203,6 +213,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Update first name
       tags: *a1
   /users/{id}/last-name:
@@ -227,6 +239,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Update last name (null to clear)
       tags: *a1
   /users/{id}/email:
@@ -251,6 +265,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+      security:
+        - bearer: []
       summary: Request an email change (sends a code to the new email)
       tags: *a1
   /users/{id}/email/confirm:
@@ -275,6 +291,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Confirm an email change with the emailed code
       tags: *a1
   /users/{id}/avatar:
@@ -299,6 +317,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Update avatar (url + key from file upload)
       tags: *a1
   /users/{id}/business:
@@ -323,6 +343,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+      security:
+        - bearer: []
       summary: Attach a business to the user
       tags: *a1
   /files/presign:
@@ -1894,7 +1916,7 @@ components:
           type: string
           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         user:
-          type: object
+          $ref: "#/components/schemas/UserResponse"
       required:
         - accessToken
         - refreshToken

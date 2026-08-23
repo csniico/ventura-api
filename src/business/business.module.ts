@@ -1,12 +1,12 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from '../user/user.module';
-import { FileStorageModule } from '../file-storage/file-storage.module';
-import { BusinessService } from './application/business.service';
-import { BusinessController } from './application/business.controller';
-import { PostgresBusinessEntity } from './domain/postgres.business-entity';
-import { BUSINESS_DATA_SOURCE } from './domain/business.repository';
-import { PostgresBusinessRepository } from './infrastructure/postgres-business.repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { FileStorageModule } from '../file-storage/file-storage.module'
+import { UserModule } from '../user/user.module'
+import { BusinessController } from './application/business.controller'
+import { BusinessService } from './application/business.service'
+import { BUSINESS_DATA_SOURCE } from './domain/business.repository'
+import { PostgresBusinessEntity } from './domain/postgres.business-entity'
+import { PostgresBusinessRepository } from './infrastructure/postgres-business.repository'
 
 @Module({
   imports: [

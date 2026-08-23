@@ -11,30 +11,30 @@ import {
   Query,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from '@nestjs/common'
 import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { InvoiceService } from './invoice.service';
-import { toInvoiceResponse } from './invoice.mapper';
-import { UserServiceV2 } from '../../user/application/user.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../../auth/types/auth.types';
-import { paginatedResponse } from '../../common/dto/paginated-response';
-import { paginate } from '../../common/dto/paginated';
-import { CreateInvoiceDto } from '../dto/create-invoice.dto';
-import { RecordPaymentDto } from '../dto/record-payment.dto';
-import { UpdateInvoiceStatusDto } from '../dto/update-invoice-status.dto';
-import { SendInvoiceDto } from '../dto/send-invoice.dto';
-import { ListInvoiceQueryDto } from '../dto/list-invoice-query.dto';
-import { InvoiceResponse } from '../responses/invoice.response';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
+import { AuthUser } from '../../auth/types/auth.types'
+import { paginate } from '../../common/dto/paginated'
+import { paginatedResponse } from '../../common/dto/paginated-response'
+import { UserServiceV2 } from '../../user/application/user.service'
+import { CreateInvoiceDto } from '../dto/create-invoice.dto'
+import { ListInvoiceQueryDto } from '../dto/list-invoice-query.dto'
+import { RecordPaymentDto } from '../dto/record-payment.dto'
+import { SendInvoiceDto } from '../dto/send-invoice.dto'
+import { UpdateInvoiceStatusDto } from '../dto/update-invoice-status.dto'
+import { InvoiceResponse } from '../responses/invoice.response'
+import { toInvoiceResponse } from './invoice.mapper'
+import { InvoiceService } from './invoice.service'
 
 interface AuthedRequest {
-  user: AuthUser;
+  user: AuthUser
 }
 
 @ApiTags('Invoices')
@@ -49,13 +49,13 @@ export class InvoiceController {
 
   /** Resolve the caller's business id, or fail if they have no business yet. */
   private async resolveBusinessId(req: AuthedRequest): Promise<string> {
-    const user = await this.userService.getUserById(req.user.userId);
+    const user = await this.userService.getUserById(req.user.userId)
     if (!user.businessId) {
       throw new ForbiddenException(
         'You must create a business before managing invoices.',
-      );
+      )
     }
-    return user.businessId;
+    return user.businessId
   }
 
   /** Create an invoice from existing orders. */
@@ -64,8 +64,8 @@ export class InvoiceController {
   @HttpCode(HttpStatus.CREATED)
   @Post()
   async create(@Req() req: AuthedRequest, @Body() dto: CreateInvoiceDto) {
-    const businessId = await this.resolveBusinessId(req);
-    return toInvoiceResponse(await this.invoiceService.create(businessId, dto));
+    const businessId = await this.resolveBusinessId(req)
+    return toInvoiceResponse(await this.invoiceService.create(businessId, dto))
   }
 
   /** List invoices, optionally filtered by ?status and ?customerId. */
@@ -73,14 +73,14 @@ export class InvoiceController {
   @ApiOkResponse({ type: paginatedResponse(InvoiceResponse) })
   @Get()
   async list(@Req() req: AuthedRequest, @Query() query: ListInvoiceQueryDto) {
-    const businessId = await this.resolveBusinessId(req);
-    const page = await this.invoiceService.list(businessId, query);
+    const businessId = await this.resolveBusinessId(req)
+    const page = await this.invoiceService.list(businessId, query)
     return paginate(
       page.data.map(toInvoiceResponse),
       page.meta.total,
       page.meta.page,
       page.meta.limit,
-    );
+    )
   }
 
   /** Get an invoice by id. */
@@ -88,8 +88,8 @@ export class InvoiceController {
   @ApiResponse({ status: 200, type: InvoiceResponse })
   @Get('/:id')
   async getById(@Req() req: AuthedRequest, @Param('id') id: string) {
-    const businessId = await this.resolveBusinessId(req);
-    return toInvoiceResponse(await this.invoiceService.getById(businessId, id));
+    const businessId = await this.resolveBusinessId(req)
+    return toInvoiceResponse(await this.invoiceService.getById(businessId, id))
   }
 
   /** Record a payment against an invoice. */
@@ -102,10 +102,10 @@ export class InvoiceController {
     @Param('id') id: string,
     @Body() dto: RecordPaymentDto,
   ) {
-    const businessId = await this.resolveBusinessId(req);
+    const businessId = await this.resolveBusinessId(req)
     return toInvoiceResponse(
       await this.invoiceService.recordPayment(businessId, id, dto),
-    );
+    )
   }
 
   /** Send an invoice to the customer. */
@@ -118,10 +118,10 @@ export class InvoiceController {
     @Param('id') id: string,
     @Body() dto: SendInvoiceDto,
   ) {
-    const businessId = await this.resolveBusinessId(req);
+    const businessId = await this.resolveBusinessId(req)
     return toInvoiceResponse(
       await this.invoiceService.send(businessId, id, dto),
-    );
+    )
   }
 
   /** Update an invoice's status. */
@@ -134,9 +134,9 @@ export class InvoiceController {
     @Param('id') id: string,
     @Body() dto: UpdateInvoiceStatusDto,
   ) {
-    const businessId = await this.resolveBusinessId(req);
+    const businessId = await this.resolveBusinessId(req)
     return toInvoiceResponse(
       await this.invoiceService.updateStatus(businessId, id, dto.status),
-    );
+    )
   }
 }

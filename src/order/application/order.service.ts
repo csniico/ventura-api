@@ -4,24 +4,24 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { CustomerService } from '../../customer/application/customer.service';
-import { ResourceService } from '../../resource/application/resource.service';
-import { ResourceType } from '../../resource/domain/resource.entity';
+} from '@nestjs/common'
+import {
+  normalizePaging,
+  Paginated,
+  paginate,
+} from '../../common/dto/paginated'
+import { CustomerService } from '../../customer/application/customer.service'
+import { ResourceService } from '../../resource/application/resource.service'
+import { ResourceType } from '../../resource/domain/resource.entity'
 import {
   IOrder,
   OrderItemSnapshot,
   OrderStatus,
   TopProduct,
-} from '../domain/order.entity';
-import { ORDER_DATA_SOURCE } from '../domain/order.repository';
-import type { OrderRepository } from '../domain/order.repository';
-import { CreateOrderDto, CreateOrderItemDto } from '../dto/create-order.dto';
-import {
-  Paginated,
-  normalizePaging,
-  paginate,
-} from '../../common/dto/paginated';
+} from '../domain/order.entity'
+import type { OrderRepository } from '../domain/order.repository'
+import { ORDER_DATA_SOURCE } from '../domain/order.repository'
+import { CreateOrderDto, CreateOrderItemDto } from '../dto/create-order.dto'
 
 /**
  * Postgres-backed order service. Data access goes through the `OrderRepository`
@@ -44,12 +44,12 @@ export class OrderService {
     businessId: string,
     lines: CreateOrderItemDto[],
   ): Promise<OrderItemSnapshot[]> {
-    const items: OrderItemSnapshot[] = [];
+    const items: OrderItemSnapshot[] = []
     for (const line of lines) {
       const resource = await this.resourceService.getById(
         businessId,
         line.resourceId,
-      );
+      )
       items.push({
         resourceId: resource.id,
         type: resource.type,
@@ -57,9 +57,9 @@ export class OrderService {
         price: resource.price,
         quantity: line.quantity,
         subTotal: resource.price * line.quantity,
-      });
+      })
     }
-    return items;
+    return items
   }
 
   /**
@@ -72,31 +72,31 @@ export class OrderService {
     const customer = await this.customerService.getById(
       businessId,
       dto.customerId,
-    );
+    )
 
-    const items = await this.buildItems(businessId, dto.items);
+    const items = await this.buildItems(businessId, dto.items)
 
     // Reserve stock for product items. Decrement atomically; on any shortfall,
     // roll back what was already decremented and reject the order.
-    const decremented: { resourceId: string; quantity: number }[] = [];
+    const decremented: { resourceId: string; quantity: number }[] = []
     for (const item of items) {
-      if (item.type !== ResourceType.PRODUCT) continue;
+      if (item.type !== ResourceType.PRODUCT) continue
       const ok = await this.resourceService.decrementStock(
         businessId,
         item.resourceId,
         item.quantity,
-      );
+      )
       if (!ok) {
-        await this.restoreStock(businessId, decremented);
-        throw new ConflictException(`Insufficient stock for "${item.name}".`);
+        await this.restoreStock(businessId, decremented)
+        throw new ConflictException(`Insufficient stock for "${item.name}".`)
       }
       decremented.push({
         resourceId: item.resourceId,
         quantity: item.quantity,
-      });
+      })
     }
 
-    const totalAmount = items.reduce((sum, i) => sum + i.subTotal, 0);
+    const totalAmount = items.reduce((sum, i) => sum + i.subTotal, 0)
 
     try {
       return await this.orderRepository.create({
@@ -108,11 +108,11 @@ export class OrderService {
         items,
         totalAmount,
         status: OrderStatus.PENDING,
-      });
+      })
     } catch (err) {
       // If persisting the order fails, give the reserved stock back.
-      await this.restoreStock(businessId, decremented);
-      throw err;
+      await this.restoreStock(businessId, decremented)
+      throw err
     }
   }
 
@@ -123,31 +123,31 @@ export class OrderService {
   async list(
     businessId: string,
     opts: {
-      page?: number;
-      limit?: number;
-      q?: string;
-      status?: OrderStatus;
-      customerId?: string;
+      page?: number
+      limit?: number
+      q?: string
+      status?: OrderStatus
+      customerId?: string
     } = {},
   ): Promise<Paginated<IOrder>> {
-    const { page, limit, skip } = normalizePaging(opts.page, opts.limit);
+    const { page, limit, skip } = normalizePaging(opts.page, opts.limit)
     const { data, total } = await this.orderRepository.list(businessId, {
       skip,
       limit,
       q: opts.q,
       status: opts.status,
       customerId: opts.customerId,
-    });
-    return paginate(data, total, page, limit);
+    })
+    return paginate(data, total, page, limit)
   }
 
   /** Get an order by id, scoped to the business. */
   async getById(businessId: string, orderId: string): Promise<IOrder> {
-    const order = await this.orderRepository.findById(businessId, orderId);
+    const order = await this.orderRepository.findById(businessId, orderId)
     if (!order) {
-      throw new NotFoundException('Order not found.');
+      throw new NotFoundException('Order not found.')
     }
-    return order;
+    return order
   }
 
   /**
@@ -155,12 +155,14 @@ export class OrderService {
    * order can only be cancelled — never reopened to PENDING, which would let
    * {@link updateItems} re-price and re-reconcile stock on finished work.
    */
-  private static readonly ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> =
-    {
-      [OrderStatus.PENDING]: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
-      [OrderStatus.COMPLETED]: [OrderStatus.CANCELLED],
-      [OrderStatus.CANCELLED]: [],
-    };
+  private static readonly ORDER_TRANSITIONS: Record<
+    OrderStatus,
+    OrderStatus[]
+  > = {
+    [OrderStatus.PENDING]: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+    [OrderStatus.COMPLETED]: [OrderStatus.CANCELLED],
+    [OrderStatus.CANCELLED]: [],
+  }
 
   /**
    * Update an order's status along the allowed transition path. Cancelling a
@@ -173,37 +175,37 @@ export class OrderService {
     orderId: string,
     status: OrderStatus,
   ): Promise<IOrder> {
-    const order = await this.getById(businessId, orderId);
+    const order = await this.getById(businessId, orderId)
 
     if (order.status === status) {
-      return order;
+      return order
     }
 
-    const allowed = OrderService.ORDER_TRANSITIONS[order.status];
+    const allowed = OrderService.ORDER_TRANSITIONS[order.status]
     if (!allowed.includes(status)) {
       throw new BadRequestException(
         `Cannot change order status from ${order.status} to ${status}.`,
-      );
+      )
     }
 
     if (status === OrderStatus.CANCELLED) {
       if (order.invoiceId) {
         throw new BadRequestException(
           'Cannot cancel an order that is on an invoice; cancel the invoice first.',
-        );
+        )
       }
       await this.restoreStock(
         businessId,
         order.items
           .filter((i) => i.type === ResourceType.PRODUCT)
           .map((i) => ({ resourceId: i.resourceId, quantity: i.quantity })),
-      );
+      )
     }
 
     const updated = await this.orderRepository.update(businessId, orderId, {
       status,
-    });
-    return updated ?? order;
+    })
+    return updated ?? order
   }
 
   /**
@@ -216,44 +218,44 @@ export class OrderService {
     orderId: string,
     lines: CreateOrderItemDto[],
   ): Promise<IOrder> {
-    const order = await this.getById(businessId, orderId);
+    const order = await this.getById(businessId, orderId)
 
     if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException('Only pending orders can be edited.');
+      throw new BadRequestException('Only pending orders can be edited.')
     }
 
-    const items = await this.buildItems(businessId, lines);
+    const items = await this.buildItems(businessId, lines)
 
     // Reconcile product stock by delta vs the existing items.
-    const oldQty = new Map<string, number>();
+    const oldQty = new Map<string, number>()
     for (const item of order.items) {
-      if (item.type !== ResourceType.PRODUCT) continue;
+      if (item.type !== ResourceType.PRODUCT) continue
       oldQty.set(
         item.resourceId,
         (oldQty.get(item.resourceId) ?? 0) + item.quantity,
-      );
+      )
     }
-    const newQty = new Map<string, number>();
-    const productNames = new Map<string, string>();
+    const newQty = new Map<string, number>()
+    const productNames = new Map<string, string>()
     for (const item of items) {
-      if (item.type !== ResourceType.PRODUCT) continue;
+      if (item.type !== ResourceType.PRODUCT) continue
       newQty.set(
         item.resourceId,
         (newQty.get(item.resourceId) ?? 0) + item.quantity,
-      );
-      productNames.set(item.resourceId, item.name);
+      )
+      productNames.set(item.resourceId, item.name)
     }
     for (const item of order.items) {
-      if (item.type !== ResourceType.PRODUCT) continue;
+      if (item.type !== ResourceType.PRODUCT) continue
       if (!productNames.has(item.resourceId)) {
-        productNames.set(item.resourceId, item.name);
+        productNames.set(item.resourceId, item.name)
       }
     }
 
-    const resourceIds = new Set<string>([...oldQty.keys(), ...newQty.keys()]);
+    const resourceIds = new Set<string>([...oldQty.keys(), ...newQty.keys()])
 
     // Track every applied delta so we can roll back symmetrically on failure.
-    const applied: { resourceId: string; quantity: number }[] = [];
+    const applied: { resourceId: string; quantity: number }[] = []
     const rollback = async () => {
       for (const a of applied) {
         if (a.quantity > 0) {
@@ -261,62 +263,62 @@ export class OrderService {
             businessId,
             a.resourceId,
             a.quantity,
-          );
+          )
         } else {
           await this.resourceService.decrementStock(
             businessId,
             a.resourceId,
             -a.quantity,
-          );
+          )
         }
       }
-    };
+    }
 
     try {
       for (const resourceId of resourceIds) {
-        const before = oldQty.get(resourceId) ?? 0;
-        const after = newQty.get(resourceId) ?? 0;
-        const delta = after - before;
-        if (delta === 0) continue;
+        const before = oldQty.get(resourceId) ?? 0
+        const after = newQty.get(resourceId) ?? 0
+        const delta = after - before
+        if (delta === 0) continue
 
         if (delta > 0) {
           const ok = await this.resourceService.decrementStock(
             businessId,
             resourceId,
             delta,
-          );
+          )
           if (!ok) {
             throw new ConflictException(
               `Insufficient stock for "${productNames.get(resourceId) ?? resourceId}".`,
-            );
+            )
           }
-          applied.push({ resourceId, quantity: delta });
+          applied.push({ resourceId, quantity: delta })
         } else {
           await this.resourceService.incrementStock(
             businessId,
             resourceId,
             -delta,
-          );
-          applied.push({ resourceId, quantity: delta });
+          )
+          applied.push({ resourceId, quantity: delta })
         }
       }
     } catch (err) {
-      await rollback();
-      throw err;
+      await rollback()
+      throw err
     }
 
-    const totalAmount = items.reduce((sum, i) => sum + i.subTotal, 0);
+    const totalAmount = items.reduce((sum, i) => sum + i.subTotal, 0)
 
     try {
       const updated = await this.orderRepository.update(businessId, orderId, {
         items,
         totalAmount,
-      });
-      return updated ?? order;
+      })
+      return updated ?? order
     } catch (err) {
       // If persisting fails, undo the stock reconciliation we just applied.
-      await rollback();
-      throw err;
+      await rollback()
+      throw err
     }
   }
 
@@ -325,7 +327,7 @@ export class OrderService {
     businessId: string,
     orderIds: string[],
   ): Promise<IOrder[]> {
-    return this.orderRepository.findByIds(businessId, orderIds);
+    return await this.orderRepository.findByIds(businessId, orderIds)
   }
 
   /** Attach an invoice id to a set of orders within a business. */
@@ -334,17 +336,17 @@ export class OrderService {
     orderIds: string[],
     invoiceId: string,
   ): Promise<void> {
-    await this.orderRepository.attachInvoice(businessId, orderIds, invoiceId);
+    await this.orderRepository.attachInvoice(businessId, orderIds, invoiceId)
   }
 
   /** Clear the invoice link from a set of orders (e.g. invoice cancelled). */
   async detachInvoice(businessId: string, orderIds: string[]): Promise<void> {
-    await this.orderRepository.detachInvoice(businessId, orderIds);
+    await this.orderRepository.detachInvoice(businessId, orderIds)
   }
 
   /** Top products by units sold across non-cancelled orders (for the dashboard). */
   async topProducts(businessId: string, limit: number): Promise<TopProduct[]> {
-    return this.orderRepository.topProducts(businessId, limit);
+    return await this.orderRepository.topProducts(businessId, limit)
   }
 
   /** Give back reserved product stock for the given line items. */
@@ -360,6 +362,6 @@ export class OrderService {
           i.quantity,
         ),
       ),
-    );
+    )
   }
 }

@@ -1,17 +1,17 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common'
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { SetupService } from './setup.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../auth/types/auth.types';
-import { SetupStatusResponse } from './responses/setup-status.response';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { AuthUser } from '../auth/types/auth.types'
+import { SetupStatusResponse } from './responses/setup-status.response'
+import { SetupService } from './setup.service'
 
 interface AuthedRequest {
-  user: AuthUser;
+  user: AuthUser
 }
 
 @ApiTags('Setup')
@@ -26,6 +26,6 @@ export class SetupController {
   @ApiResponse({ status: 200, type: SetupStatusResponse })
   @Get('/status')
   async status(@Req() req: AuthedRequest) {
-    return this.setupService.getStatus(req.user.userId);
+    return await this.setupService.getStatus(req.user.userId)
   }
 }

@@ -1,5 +1,5 @@
-import { IOrder } from '../domain/order.entity';
-import { OrderResponse } from '../responses/order.response';
+import { IOrder } from '../domain/order.entity'
+import { OrderResponse } from '../responses/order.response'
 
 /**
  * Project a domain `IOrder` onto the public `OrderResponse` contract,
@@ -20,5 +20,5 @@ export function toOrderResponse(order: IOrder): OrderResponse {
     invoiceId: order.invoiceId ?? null,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
-  };
+  }
 }

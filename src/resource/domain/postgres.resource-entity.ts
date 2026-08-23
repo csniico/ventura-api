@@ -1,6 +1,6 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
-import { BusinessHours, ResourceType } from './resource.entity';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
+import { BusinessHours, ResourceType } from './resource.entity'
 
 /**
  * Postgres mapping for a resource (MikroORM v7 schema-first `defineEntity`).
@@ -41,6 +41,6 @@ export const PostgresResourceEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresResource = InferEntity<typeof PostgresResourceEntity>;
+export type PostgresResource = InferEntity<typeof PostgresResourceEntity>

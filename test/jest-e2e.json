@@ -3,7 +3,28 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "transformIgnorePatterns": ["node_modules/.pnpm/(?!nanoid)"],
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "@swc/jest",
+      {
+        "jsc": {
+          "parser": {
+            "syntax": "typescript",
+            "decorators": true,
+            "dynamicImport": true
+          },
+          "transform": {
+            "legacyDecorator": true,
+            "decoratorMetadata": true
+          },
+          "target": "es2023",
+          "keepClassNames": true
+        },
+        "module": {
+          "type": "commonjs"
+        }
+      }
+    ]
   }
 }

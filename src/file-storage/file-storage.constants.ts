@@ -5,4 +5,4 @@ export const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/jpg': 'jpg',
   'image/webp': 'webp',
   'image/gif': 'gif',
-};
+}

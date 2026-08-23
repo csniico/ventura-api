@@ -1,22 +1,22 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 
 /** Public shape of an Admin returned by the API. */
 export class AdminResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  id!: string;
+  id!: string
 
   @ApiProperty({ example: 'aB3xY9kP' })
-  shortId!: string;
+  shortId!: string
 
   @ApiProperty({ example: 'Ada Lovelace' })
-  name!: string;
+  name!: string
 
   @ApiProperty({ example: 'ada@example.com', format: 'email' })
-  email!: string;
+  email!: string
 
   @ApiProperty({ type: String, format: 'date-time' })
-  createdAt!: Date;
+  createdAt!: Date
 
   @ApiProperty({ type: String, format: 'date-time' })
-  updatedAt!: Date;
+  updatedAt!: Date
 }

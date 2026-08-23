@@ -1,4 +1,4 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
 
 /**
  * A short-lived pending email-change request. Mirrors the legacy Mongoose
@@ -19,6 +19,6 @@ export const PostgresEmailChangeEntity = defineEntity({
     expiresAt: p.datetime(),
     createdAt: p.datetime().onCreate(() => new Date()),
   }),
-});
+})
 
-export type PostgresEmailChange = InferEntity<typeof PostgresEmailChangeEntity>;
+export type PostgresEmailChange = InferEntity<typeof PostgresEmailChangeEntity>

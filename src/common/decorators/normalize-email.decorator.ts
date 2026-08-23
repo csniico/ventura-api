@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { Transform } from 'class-transformer'
 
 /**
  * Canonicalizes an email field during DTO transformation: trims surrounding
@@ -13,4 +13,4 @@ import { Transform } from 'class-transformer';
 export const NormalizeEmail = (): PropertyDecorator =>
   Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
-  );
+  )

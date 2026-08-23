@@ -1,16 +1,16 @@
-import { IUser, UserRole } from './user.entity';
+import { IUser, UserRole } from './user.entity'
 
 /** Fields accepted when creating a user. Everything else is defaulted by the DB. */
 export interface ICreateUser {
-  firstName: string;
-  email: string;
-  role?: UserRole;
-  lastName?: string | null;
-  googleId?: string | null;
-  appleId?: string | null;
-  avatarUrl?: string | null;
-  avatarKey?: string | null;
-  isEmailVerified?: boolean;
+  firstName: string
+  email: string
+  role?: UserRole
+  lastName?: string | null
+  googleId?: string | null
+  appleId?: string | null
+  avatarUrl?: string | null
+  avatarKey?: string | null
+  isEmailVerified?: boolean
 }
 
 /**
@@ -20,19 +20,19 @@ export interface ICreateUser {
  * "don't change it".
  */
 export interface IUpdateUser {
-  firstName?: string;
-  lastName?: string | null;
-  email?: string;
-  googleId?: string | null;
-  appleId?: string | null;
-  password?: string | null;
-  hashedRefreshToken?: string | null;
-  avatarUrl?: string | null;
-  avatarKey?: string | null;
-  businessId?: string | null;
-  isEmailVerified?: boolean;
-  deleted?: boolean;
-  deletedAt?: Date | null;
+  firstName?: string
+  lastName?: string | null
+  email?: string
+  googleId?: string | null
+  appleId?: string | null
+  password?: string | null
+  hashedRefreshToken?: string | null
+  avatarUrl?: string | null
+  avatarKey?: string | null
+  businessId?: string | null
+  isEmailVerified?: boolean
+  deleted?: boolean
+  deletedAt?: Date | null
 }
 
 /**
@@ -42,17 +42,17 @@ export interface IUpdateUser {
  * decides what is safe to expose.
  */
 export interface UserRepository {
-  findById(id: string): Promise<IUser | null>;
-  findByEmail(email: string): Promise<IUser | null>;
-  findByAppleId(appleId: string): Promise<IUser | null>;
+  findById(id: string): Promise<IUser | null>
+  findByEmail(email: string): Promise<IUser | null>
+  findByAppleId(appleId: string): Promise<IUser | null>
   /** All users, newest first (admin listing). */
-  list(): Promise<IUser[]>;
-  create(data: ICreateUser): Promise<IUser>;
+  list(): Promise<IUser[]>
+  create(data: ICreateUser): Promise<IUser>
   /** Apply a patch to the user with `id`. Returns null if no such user exists. */
-  update(id: string, patch: IUpdateUser): Promise<IUser | null>;
+  update(id: string, patch: IUpdateUser): Promise<IUser | null>
   /** Permanently remove the user. Returns the removed user, or null if none. */
-  hardDelete(id: string): Promise<IUser | null>;
+  hardDelete(id: string): Promise<IUser | null>
 }
 
 // Token for Nest DI (interfaces have no runtime representation to bind against).
-export const USER_DATA_SOURCE = Symbol('USER_DATA_SOURCE');
+export const USER_DATA_SOURCE = Symbol('USER_DATA_SOURCE')

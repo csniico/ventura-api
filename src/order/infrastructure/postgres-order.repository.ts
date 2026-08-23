@@ -1,21 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/postgresql';
-import type { FilterQuery } from '@mikro-orm/core';
-import { IOrder, TopProduct } from '../domain/order.entity';
+import type { FilterQuery } from '@mikro-orm/core'
+import { EntityManager } from '@mikro-orm/postgresql'
+import { Injectable } from '@nestjs/common'
+import { IOrder, TopProduct } from '../domain/order.entity'
 import {
   ICreateOrder,
   IUpdateOrder,
   ListOrdersOptions,
   OrderRepository,
-} from '../domain/order.repository';
+} from '../domain/order.repository'
 import {
   PostgresOrder,
   PostgresOrderEntity,
-} from '../domain/postgres.order-entity';
+} from '../domain/postgres.order-entity'
 
 /** Escape LIKE/ILIKE wildcards so a raw search term matches literally. */
 function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`)
 }
 
 @Injectable()
@@ -38,53 +38,53 @@ export class PostgresOrderRepository implements OrderRepository {
       invoiceId: entity.invoiceId,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-    };
+    }
   }
 
   async create(data: ICreateOrder): Promise<IOrder> {
-    const order = this.em.create(PostgresOrderEntity, data);
-    await this.em.flush();
-    return this.toDomain(order);
+    const order = this.em.create(PostgresOrderEntity, data)
+    await this.em.flush()
+    return this.toDomain(order)
   }
 
   async findById(businessId: string, id: string): Promise<IOrder | null> {
     const order = await this.em.findOne(PostgresOrderEntity, {
       id,
       businessId,
-    });
-    return order ? this.toDomain(order) : null;
+    })
+    return order ? this.toDomain(order) : null
   }
 
   async findByIds(businessId: string, ids: string[]): Promise<IOrder[]> {
-    if (ids.length === 0) return [];
+    if (ids.length === 0) return []
     const orders = await this.em.find(PostgresOrderEntity, {
       id: { $in: ids },
       businessId,
-    });
-    return orders.map((o) => this.toDomain(o));
+    })
+    return orders.map((o) => this.toDomain(o))
   }
 
   async list(
     businessId: string,
     opts: ListOrdersOptions,
   ): Promise<{ data: IOrder[]; total: number }> {
-    const where: FilterQuery<PostgresOrder> = { businessId };
-    if (opts.status) where.status = opts.status;
-    if (opts.customerId) where.customerId = opts.customerId;
+    const where: FilterQuery<PostgresOrder> = { businessId }
+    if (opts.status) where.status = opts.status
+    if (opts.customerId) where.customerId = opts.customerId
     if (opts.q?.trim()) {
-      const like = `%${escapeLike(opts.q.trim())}%`;
+      const like = `%${escapeLike(opts.q.trim())}%`
       where.$or = [
         { orderNumber: { $ilike: like } },
         { customerName: { $ilike: like } },
-      ];
+      ]
     }
 
     const [rows, total] = await this.em.findAndCount(
       PostgresOrderEntity,
       where,
       { orderBy: { createdAt: 'DESC' }, limit: opts.limit, offset: opts.skip },
-    );
-    return { data: rows.map((o) => this.toDomain(o)), total };
+    )
+    return { data: rows.map((o) => this.toDomain(o)), total }
   }
 
   async update(
@@ -95,16 +95,16 @@ export class PostgresOrderRepository implements OrderRepository {
     const order = await this.em.findOne(PostgresOrderEntity, {
       id,
       businessId,
-    });
+    })
     if (!order) {
-      return null;
+      return null
     }
     const clean = Object.fromEntries(
       Object.entries(patch).filter(([, v]) => v !== undefined),
-    );
-    this.em.assign(order, clean);
-    await this.em.flush();
-    return this.toDomain(order);
+    )
+    this.em.assign(order, clean)
+    await this.em.flush()
+    return this.toDomain(order)
   }
 
   async attachInvoice(
@@ -112,21 +112,21 @@ export class PostgresOrderRepository implements OrderRepository {
     ids: string[],
     invoiceId: string,
   ): Promise<void> {
-    if (ids.length === 0) return;
+    if (ids.length === 0) return
     await this.em.nativeUpdate(
       PostgresOrderEntity,
       { id: { $in: ids }, businessId },
       { invoiceId },
-    );
+    )
   }
 
   async detachInvoice(businessId: string, ids: string[]): Promise<void> {
-    if (ids.length === 0) return;
+    if (ids.length === 0) return
     await this.em.nativeUpdate(
       PostgresOrderEntity,
       { id: { $in: ids }, businessId },
       { invoiceId: null },
-    );
+    )
   }
 
   async topProducts(businessId: string, limit: number): Promise<TopProduct[]> {
@@ -151,11 +151,11 @@ export class PostgresOrderRepository implements OrderRepository {
        order by "unitsSold" desc
        limit ?`,
         [businessId, limit],
-      );
+      )
     return rows.map((r) => ({
       resourceId: r.resourceId,
       name: r.name,
       unitsSold: Number(r.unitsSold),
-    }));
+    }))
   }
 }

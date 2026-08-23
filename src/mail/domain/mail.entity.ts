@@ -19,15 +19,15 @@ export enum MailType {
  * is the Resend message id on success; `error` is set on failure.
  */
 export interface IMail {
-  id: string;
-  shortId: string;
-  to: string;
-  from: string;
-  subject: string;
-  type: MailType;
-  status: MailStatus;
-  providerId?: string | null;
-  error?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string
+  shortId: string
+  to: string
+  from: string
+  subject: string
+  type: MailType
+  status: MailStatus
+  providerId?: string | null
+  error?: string | null
+  createdAt: Date
+  updatedAt: Date
 }

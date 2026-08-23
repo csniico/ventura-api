@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
-import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator'
+import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator'
 
 /**
  * Create a password for a user who does not have one yet
@@ -11,18 +11,18 @@ export class CreatePasswordDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  userId!: string;
+  userId!: string
 
   @ApiProperty({ format: 'email' })
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 
   @ApiProperty({ minLength: 12, example: 'sup3r-Secret!pw' })
   @IsString()
   @MinLength(12)
-  newPassword!: string;
+  newPassword!: string
 }
 
 /**
@@ -33,21 +33,21 @@ export class UpdatePasswordDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  userId!: string;
+  userId!: string
 
   @ApiProperty({ format: 'email' })
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  oldPassword!: string;
+  oldPassword!: string
 
   @ApiProperty({ minLength: 12, example: 'new-Passw0rd!yy' })
   @IsString()
   @MinLength(12)
-  newPassword!: string;
+  newPassword!: string
 }

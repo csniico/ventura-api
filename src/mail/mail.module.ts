@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { MailService } from './mail.service';
-import { PostgresMailEntity } from './domain/postgres.mail-entity';
-import { MAIL_DATA_SOURCE } from './domain/mail.repository';
-import { PostgresMailRepository } from './infrastructure/postgres-mail.repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { MAIL_DATA_SOURCE } from './domain/mail.repository'
+import { PostgresMailEntity } from './domain/postgres.mail-entity'
+import { PostgresMailRepository } from './infrastructure/postgres-mail.repository'
+import { MailService } from './mail.service'
 
 @Module({
   imports: [MikroOrmModule.forFeature([PostgresMailEntity])],

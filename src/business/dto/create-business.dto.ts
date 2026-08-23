@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator'
 
 /**
  * Create a business. The frontend creates with a name and an optional list of
@@ -10,7 +10,7 @@ export class CreateBusinessDto {
   @ApiProperty({ example: 'Acme Corp' })
   @IsString()
   @IsNotEmpty()
-  name!: string;
+  name!: string
 
   @ApiProperty({
     required: false,
@@ -20,5 +20,5 @@ export class CreateBusinessDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  categories?: string[];
+  categories?: string[]
 }

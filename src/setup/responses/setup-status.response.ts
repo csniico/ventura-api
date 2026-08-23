@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 
 /**
  * Whether the signed-in user has completed each first-run setup step. Drives
@@ -7,24 +7,24 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class SetupStatusResponse {
   @ApiProperty({ example: false })
-  hasBusiness!: boolean;
+  hasBusiness!: boolean
 
   @ApiProperty({ example: false })
-  hasCustomers!: boolean;
+  hasCustomers!: boolean
 
   @ApiProperty({ example: false })
-  hasResources!: boolean;
+  hasResources!: boolean
 
   @ApiProperty({ example: false })
-  hasOrders!: boolean;
+  hasOrders!: boolean
 
   @ApiProperty({ example: false })
-  hasInvoices!: boolean;
+  hasInvoices!: boolean
 
   @ApiProperty({ example: false })
-  hasAppointments!: boolean;
+  hasAppointments!: boolean
 
   /** True once every step above is done. */
   @ApiProperty({ example: false })
-  complete!: boolean;
+  complete!: boolean
 }

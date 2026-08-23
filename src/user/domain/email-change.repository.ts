@@ -1,9 +1,9 @@
 /** A pending email-change request as seen by the domain/service layer. */
 export interface IPendingEmailChange {
-  userId: string;
-  newEmail: string;
-  code: string;
-  expiresAt: Date;
+  userId: string
+  newEmail: string
+  code: string
+  expiresAt: Date
 }
 
 /**
@@ -12,14 +12,14 @@ export interface IPendingEmailChange {
  */
 export interface EmailChangeRepository {
   /** Remove every pending change for a user (used before writing a fresh one). */
-  deleteByUserId(userId: string): Promise<void>;
-  create(data: IPendingEmailChange): Promise<void>;
+  deleteByUserId(userId: string): Promise<void>
+  create(data: IPendingEmailChange): Promise<void>
   /** Find a non-expired pending change matching this user + code, or null. */
   findValid(
     userId: string,
     code: string,
     now: Date,
-  ): Promise<IPendingEmailChange | null>;
+  ): Promise<IPendingEmailChange | null>
 }
 
-export const EMAIL_CHANGE_DATA_SOURCE = Symbol('EMAIL_CHANGE_DATA_SOURCE');
+export const EMAIL_CHANGE_DATA_SOURCE = Symbol('EMAIL_CHANGE_DATA_SOURCE')

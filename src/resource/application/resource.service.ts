@@ -4,18 +4,18 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { IResource, ResourceType } from '../domain/resource.entity';
-import { RESOURCE_DATA_SOURCE } from '../domain/resource.repository';
-import type { ResourceRepository } from '../domain/resource.repository';
-import { CreateResourceDto } from '../dto/create-resource.dto';
-import { UpdateResourceDto } from '../dto/update-resource.dto';
-import { FileStorageService } from '../../file-storage/file-storage.service';
+} from '@nestjs/common'
 import {
-  Paginated,
   normalizePaging,
+  Paginated,
   paginate,
-} from '../../common/dto/paginated';
+} from '../../common/dto/paginated'
+import { FileStorageService } from '../../file-storage/file-storage.service'
+import { IResource, ResourceType } from '../domain/resource.entity'
+import type { ResourceRepository } from '../domain/resource.repository'
+import { RESOURCE_DATA_SOURCE } from '../domain/resource.repository'
+import { CreateResourceDto } from '../dto/create-resource.dto'
+import { UpdateResourceDto } from '../dto/update-resource.dto'
 
 /**
  * Postgres-backed resource service. Data access goes through the
@@ -27,7 +27,7 @@ import {
  */
 @Injectable()
 export class ResourceService {
-  private readonly logger = new Logger(ResourceService.name);
+  private readonly logger = new Logger(ResourceService.name)
 
   constructor(
     @Inject(RESOURCE_DATA_SOURCE)
@@ -39,34 +39,32 @@ export class ResourceService {
   private assertFieldsMatchType(
     type: ResourceType,
     fields: {
-      availableQuantity?: number;
-      lowStockThreshold?: number;
-      businessHours?: unknown;
+      availableQuantity?: number
+      lowStockThreshold?: number
+      businessHours?: unknown
     },
   ): void {
     if (type === ResourceType.SERVICE) {
       if (fields.availableQuantity !== undefined) {
         throw new BadRequestException(
           'availableQuantity is not valid for a service.',
-        );
+        )
       }
       if (fields.lowStockThreshold !== undefined) {
         throw new BadRequestException(
           'lowStockThreshold is not valid for a service.',
-        );
+        )
       }
     }
     if (type === ResourceType.PRODUCT && fields.businessHours !== undefined) {
-      throw new BadRequestException(
-        'businessHours is not valid for a product.',
-      );
+      throw new BadRequestException('businessHours is not valid for a product.')
     }
   }
 
   /** Create a product or service for a business. */
   async create(businessId: string, dto: CreateResourceDto): Promise<IResource> {
-    this.assertFieldsMatchType(dto.type, dto);
-    return this.resourceRepository.create({ businessId, ...dto });
+    this.assertFieldsMatchType(dto.type, dto)
+    return await this.resourceRepository.create({ businessId, ...dto })
   }
 
   /**
@@ -76,20 +74,20 @@ export class ResourceService {
   async list(
     businessId: string,
     opts: {
-      page?: number;
-      limit?: number;
-      q?: string;
-      type?: ResourceType;
+      page?: number
+      limit?: number
+      q?: string
+      type?: ResourceType
     } = {},
   ): Promise<Paginated<IResource>> {
-    const { page, limit, skip } = normalizePaging(opts.page, opts.limit);
+    const { page, limit, skip } = normalizePaging(opts.page, opts.limit)
     const { data, total } = await this.resourceRepository.list(businessId, {
       skip,
       limit,
       q: opts.q,
       type: opts.type,
-    });
-    return paginate(data, total, page, limit);
+    })
+    return paginate(data, total, page, limit)
   }
 
   /** Get a resource by id, scoped to the business. */
@@ -97,19 +95,19 @@ export class ResourceService {
     const resource = await this.resourceRepository.findById(
       businessId,
       resourceId,
-    );
+    )
     if (!resource) {
-      throw new NotFoundException('Resource not found.');
+      throw new NotFoundException('Resource not found.')
     }
-    return resource;
+    return resource
   }
 
   /** Best-effort cleanup of a replaced S3 object. Never throws. */
   private async deleteObject(key: string): Promise<void> {
     try {
-      await this.fileStorageService.deleteFile(key);
+      await this.fileStorageService.deleteFile(key)
     } catch (error) {
-      this.logger.error(`Failed to delete old image ${key}`, error);
+      this.logger.error(`Failed to delete old image ${key}`, error)
     }
   }
 
@@ -123,18 +121,18 @@ export class ResourceService {
     resourceId: string,
     dto: UpdateResourceDto,
   ): Promise<IResource> {
-    const resource = await this.getById(businessId, resourceId);
-    this.assertFieldsMatchType(resource.type, dto);
+    const resource = await this.getById(businessId, resourceId)
+    this.assertFieldsMatchType(resource.type, dto)
 
-    const oldPrimaryImageKey = resource.primaryImageKey;
-    const oldSupportingImageKeys = [...(resource.supportingImageKeys ?? [])];
+    const oldPrimaryImageKey = resource.primaryImageKey
+    const oldSupportingImageKeys = [...(resource.supportingImageKeys ?? [])]
 
     const updated = await this.resourceRepository.update(
       businessId,
       resourceId,
       dto,
-    );
-    const saved = updated ?? resource;
+    )
+    const saved = updated ?? resource
 
     // Clean up the previous primary image object if it was replaced.
     if (
@@ -142,33 +140,30 @@ export class ResourceService {
       oldPrimaryImageKey &&
       oldPrimaryImageKey !== dto.primaryImageKey
     ) {
-      await this.deleteObject(oldPrimaryImageKey);
+      await this.deleteObject(oldPrimaryImageKey)
     }
 
     // Clean up supporting image objects that were removed from the array.
     if (dto.supportingImageKeys !== undefined) {
-      const newKeys = new Set(dto.supportingImageKeys);
+      const newKeys = new Set(dto.supportingImageKeys)
       const removedKeys = oldSupportingImageKeys.filter(
         (key) => !newKeys.has(key),
-      );
+      )
       for (const key of removedKeys) {
-        await this.deleteObject(key);
+        await this.deleteObject(key)
       }
     }
 
-    return saved;
+    return saved
   }
 
   /** Delete a resource, scoped to the business. */
   async delete(businessId: string, resourceId: string): Promise<IResource> {
-    const removed = await this.resourceRepository.delete(
-      businessId,
-      resourceId,
-    );
+    const removed = await this.resourceRepository.delete(businessId, resourceId)
     if (!removed) {
-      throw new NotFoundException('Resource not found.');
+      throw new NotFoundException('Resource not found.')
     }
-    return removed;
+    return removed
   }
 
   /**
@@ -181,11 +176,11 @@ export class ResourceService {
     resourceId: string,
     quantity: number,
   ): Promise<boolean> {
-    return this.resourceRepository.decrementStock(
+    return await this.resourceRepository.decrementStock(
       businessId,
       resourceId,
       quantity,
-    );
+    )
   }
 
   /**
@@ -201,11 +196,11 @@ export class ResourceService {
       businessId,
       resourceId,
       quantity,
-    );
+    )
   }
 
   /** Count products at or below their low-stock threshold (for the dashboard). */
   async countLowStock(businessId: string): Promise<number> {
-    return this.resourceRepository.countLowStock(businessId);
+    return await this.resourceRepository.countLowStock(businessId)
   }
 }

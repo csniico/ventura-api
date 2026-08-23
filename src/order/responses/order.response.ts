@@ -1,44 +1,44 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ResourceType } from '../../resource/domain/resource.entity';
-import { OrderStatus } from '../domain/order.entity';
+import { ApiProperty } from '@nestjs/swagger'
+import { ResourceType } from '../../resource/domain/resource.entity'
+import { OrderStatus } from '../domain/order.entity'
 
 /** A line item on an order, with a snapshot of the resource at order time. */
 export class OrderItemResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  resourceId!: string;
+  resourceId!: string
 
   @ApiProperty({ enum: ResourceType, example: ResourceType.PRODUCT })
-  type!: ResourceType;
+  type!: ResourceType
 
   @ApiProperty({ example: 'Espresso Beans 1kg' })
-  name!: string;
+  name!: string
 
   @ApiProperty({ example: 9.99 })
-  price!: number;
+  price!: number
 
   @ApiProperty({ example: 2 })
-  quantity!: number;
+  quantity!: number
 
   @ApiProperty({ example: 19.98 })
-  subTotal!: number;
+  subTotal!: number
 }
 
 /** Public shape of an Order returned by the API. */
 export class OrderResponse {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  id!: string;
+  id!: string
 
   @ApiProperty({ example: 'ORD-AB3XY9KP' })
-  orderNumber!: string;
+  orderNumber!: string
 
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  businessId!: string;
+  businessId!: string
 
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
-  customerId!: string;
+  customerId!: string
 
   @ApiProperty({ example: 'Ada Lovelace' })
-  customerName!: string;
+  customerName!: string
 
   @ApiProperty({
     required: false,
@@ -46,30 +46,30 @@ export class OrderResponse {
     example: 'ada@example.com',
     format: 'email',
   })
-  customerEmail?: string | null;
+  customerEmail?: string | null
 
   @ApiProperty({ required: false, nullable: true, example: '+15551234567' })
-  customerPhone?: string | null;
+  customerPhone?: string | null
 
   @ApiProperty({ type: [OrderItemResponse] })
-  items!: OrderItemResponse[];
+  items!: OrderItemResponse[]
 
   @ApiProperty({ example: 19.98 })
-  totalAmount!: number;
+  totalAmount!: number
 
   @ApiProperty({ enum: OrderStatus, example: OrderStatus.PENDING })
-  status!: OrderStatus;
+  status!: OrderStatus
 
   @ApiProperty({
     required: false,
     nullable: true,
     example: '665f1b2c3d4e5f6a7b8c9d0e',
   })
-  invoiceId?: string | null;
+  invoiceId?: string | null
 
   @ApiProperty({ type: String, format: 'date-time' })
-  createdAt!: Date;
+  createdAt!: Date
 
   @ApiProperty({ type: String, format: 'date-time' })
-  updatedAt!: Date;
+  updatedAt!: Date
 }

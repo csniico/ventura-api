@@ -1,5 +1,5 @@
-import { IUser } from '../domain/user.entity';
-import { UserResponse } from '../responses/user.response';
+import { IUser } from '../domain/user.entity'
+import { UserResponse } from '../responses/user.response'
 
 /**
  * Project a domain `IUser` onto the public `UserResponse` contract. This is the
@@ -24,5 +24,5 @@ export function toUserResponse(user: IUser): UserResponse {
     deletedAt: user.deletedAt ?? null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-  };
+  }
 }

@@ -1,5 +1,5 @@
-import { IAdmin } from '../domain/admin.entity';
-import { AdminResponse } from '../responses/admin.response';
+import { IAdmin } from '../domain/admin.entity'
+import { AdminResponse } from '../responses/admin.response'
 
 /** Project a domain `IAdmin` onto the public `AdminResponse` contract. */
 export function toAdminResponse(admin: IAdmin): AdminResponse {
@@ -10,5 +10,5 @@ export function toAdminResponse(admin: IAdmin): AdminResponse {
     email: admin.email,
     createdAt: admin.createdAt,
     updatedAt: admin.updatedAt,
-  };
+  }
 }

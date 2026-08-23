@@ -1,6 +1,6 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
-import { MailStatus, MailType } from './mail.entity';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
+import { MailStatus, MailType } from './mail.entity'
 
 /**
  * Postgres mapping for a mail-send audit record (MikroORM v7 schema-first
@@ -33,6 +33,6 @@ export const PostgresMailEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresMail = InferEntity<typeof PostgresMailEntity>;
+export type PostgresMail = InferEntity<typeof PostgresMailEntity>

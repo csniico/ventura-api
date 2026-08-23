@@ -9,23 +9,23 @@ import {
   Post,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from '@nestjs/common'
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { BusinessService } from './business.service';
-import { toBusinessResponse } from './business.mapper';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../../auth/types/auth.types';
-import { CreateBusinessDto } from '../dto/create-business.dto';
-import { UpdateBusinessDto } from '../dto/update-business.dto';
-import { BusinessResponse } from '../responses/business.response';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
+import { AuthUser } from '../../auth/types/auth.types'
+import { CreateBusinessDto } from '../dto/create-business.dto'
+import { UpdateBusinessDto } from '../dto/update-business.dto'
+import { BusinessResponse } from '../responses/business.response'
+import { toBusinessResponse } from './business.mapper'
+import { BusinessService } from './business.service'
 
 interface AuthedRequest {
-  user: AuthUser;
+  user: AuthUser
 }
 
 @ApiTags('Business')
@@ -43,7 +43,7 @@ export class BusinessController {
   })
   @Get('/categories')
   getCategories() {
-    return this.businessService.getCategories();
+    return this.businessService.getCategories()
   }
 
   /** The business owned by the authenticated user (or null). */
@@ -51,8 +51,8 @@ export class BusinessController {
   @ApiResponse({ status: 200, type: BusinessResponse })
   @Get('/mine')
   async getMine(@Req() req: AuthedRequest) {
-    const business = await this.businessService.getByOwner(req.user.userId);
-    return business ? toBusinessResponse(business) : null;
+    const business = await this.businessService.getByOwner(req.user.userId)
+    return business ? toBusinessResponse(business) : null
   }
 
   /** Create a business owned by the authenticated user. */
@@ -63,7 +63,7 @@ export class BusinessController {
   async create(@Req() req: AuthedRequest, @Body() dto: CreateBusinessDto) {
     return toBusinessResponse(
       await this.businessService.create(req.user.userId, dto),
-    );
+    )
   }
 
   /** Get a business by id. */
@@ -71,7 +71,7 @@ export class BusinessController {
   @ApiResponse({ status: 200, type: BusinessResponse })
   @Get('/:id')
   async getById(@Param('id') id: string) {
-    return toBusinessResponse(await this.businessService.getById(id));
+    return toBusinessResponse(await this.businessService.getById(id))
   }
 
   /** Update a business the authenticated user owns. */
@@ -86,6 +86,6 @@ export class BusinessController {
   ) {
     return toBusinessResponse(
       await this.businessService.update(id, req.user.userId, dto),
-    );
+    )
   }
 }

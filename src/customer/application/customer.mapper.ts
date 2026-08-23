@@ -1,5 +1,5 @@
-import { ICustomer } from '../domain/customer.entity';
-import { CustomerResponse } from '../responses/customer.response';
+import { ICustomer } from '../domain/customer.entity'
+import { CustomerResponse } from '../responses/customer.response'
 
 /** Project a domain `ICustomer` onto the public `CustomerResponse` contract. */
 export function toCustomerResponse(customer: ICustomer): CustomerResponse {
@@ -13,5 +13,5 @@ export function toCustomerResponse(customer: ICustomer): CustomerResponse {
     notes: customer.notes ?? null,
     createdAt: customer.createdAt,
     updatedAt: customer.updatedAt,
-  };
+  }
 }

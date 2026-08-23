@@ -1,6 +1,6 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
-import { AppointmentStatus, Invitee, Recurrence } from './appointment.entity';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
+import { AppointmentStatus, Invitee, Recurrence } from './appointment.entity'
 
 /**
  * Postgres mapping for an appointment (MikroORM v7 schema-first `defineEntity`).
@@ -40,6 +40,6 @@ export const PostgresAppointmentEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresAppointment = InferEntity<typeof PostgresAppointmentEntity>;
+export type PostgresAppointment = InferEntity<typeof PostgresAppointmentEntity>

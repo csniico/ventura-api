@@ -1,6 +1,6 @@
-import { Type } from '@nestjs/common';
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
-import { PaginationMeta } from './paginated';
+import { Type } from '@nestjs/common'
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger'
+import { PaginationMeta } from './paginated'
 
 /**
  * Build a concrete Swagger response class for a paginated list of `model`,
@@ -12,17 +12,17 @@ export function paginatedResponse<TModel extends Type<unknown>>(
 ): Type<unknown> {
   class PaginatedDto {
     @ApiProperty({ type: model, isArray: true })
-    data!: unknown[];
+    data!: unknown[]
 
     @ApiProperty({ type: PaginationMeta })
-    meta!: PaginationMeta;
+    meta!: PaginationMeta
   }
   // Give the generated class a stable, unique name in the spec.
   Object.defineProperty(PaginatedDto, 'name', {
     value: `Paginated${model.name}`,
-  });
-  return PaginatedDto;
+  })
+  return PaginatedDto
 }
 
 // Re-export so callers can reference the path if needed.
-export { getSchemaPath };
+export { getSchemaPath }

@@ -1,6 +1,6 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
-import { BusinessHours, Socials } from './business.entity';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
+import { BusinessHours, Socials } from './business.entity'
 
 /**
  * Postgres mapping for a business (MikroORM v7 schema-first `defineEntity`).
@@ -48,6 +48,6 @@ export const PostgresBusinessEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresBusiness = InferEntity<typeof PostgresBusinessEntity>;
+export type PostgresBusiness = InferEntity<typeof PostgresBusinessEntity>

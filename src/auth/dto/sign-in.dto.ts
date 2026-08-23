@@ -1,12 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 import {
   IsEmail,
   IsNotEmpty,
   IsOptional,
   IsString,
   Length,
-} from 'class-validator';
-import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator';
+} from 'class-validator'
+import { NormalizeEmail } from '../../common/decorators/normalize-email.decorator'
 
 /** Email + password sign-in. */
 export class SignInPasswordDto {
@@ -14,12 +14,12 @@ export class SignInPasswordDto {
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 
   @ApiProperty({ example: 'S3curePassw0rd!' })
   @IsString()
   @IsNotEmpty()
-  password!: string;
+  password!: string
 }
 
 /** Request a passwordless email sign-in code. */
@@ -28,7 +28,7 @@ export class SignInEmailDto {
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 }
 
 /** Verify an emailed 6-digit code. */
@@ -37,13 +37,13 @@ export class VerifyCodeDto {
   @NormalizeEmail()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 
   @ApiProperty({ example: '123456' })
   @IsString()
   @IsNotEmpty()
   @Length(6, 6)
-  code!: string;
+  code!: string
 }
 
 /** Sign in with a Google ID token obtained by the frontend. */
@@ -51,7 +51,7 @@ export class SignInGoogleDto {
   @ApiProperty({ example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6...' })
   @IsString()
   @IsNotEmpty()
-  idToken!: string;
+  idToken!: string
 }
 
 /**
@@ -63,22 +63,22 @@ export class SignInAppleDto {
   @ApiProperty({ example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6...' })
   @IsString()
   @IsNotEmpty()
-  identityToken!: string;
+  identityToken!: string
 
   // The raw nonce the app generated; Apple embeds SHA256(nonce) in the token.
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  rawNonce?: string;
+  rawNonce?: string
 
   // Apple returns the name ONLY on the first authorization; forwarded then.
   @ApiProperty({ required: false, example: 'Ada' })
   @IsOptional()
   @IsString()
-  firstName?: string;
+  firstName?: string
 
   @ApiProperty({ required: false, example: 'Lovelace' })
   @IsOptional()
   @IsString()
-  lastName?: string;
+  lastName?: string
 }

@@ -5,15 +5,15 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-} from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { FileStorageService } from './file-storage.service';
-import { PresignUploadDto } from './dto/presign-upload.dto';
-import { DeleteFileDto } from './dto/delete-file.dto';
+} from '@nestjs/common'
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { DeleteFileDto } from './dto/delete-file.dto'
+import { PresignUploadDto } from './dto/presign-upload.dto'
+import { FileStorageService } from './file-storage.service'
 import {
   DeleteFileResponse,
   PresignedUploadResponse,
-} from './responses/file-storage.response';
+} from './responses/file-storage.response'
 
 @ApiTags('Files')
 @Controller('files')
@@ -30,7 +30,7 @@ export class FileStorageController {
   @HttpCode(HttpStatus.OK)
   @Post('/presign')
   async presign(@Body() dto: PresignUploadDto) {
-    return this.fileStorageService.createPresignedUpload(dto);
+    return await this.fileStorageService.createPresignedUpload(dto)
   }
 
   /** Delete a stored file by its key. */
@@ -39,6 +39,6 @@ export class FileStorageController {
   @HttpCode(HttpStatus.OK)
   @Delete()
   async delete(@Body() dto: DeleteFileDto) {
-    return this.fileStorageService.deleteFile(dto.fileKey);
+    return await this.fileStorageService.deleteFile(dto.fileKey)
   }
 }

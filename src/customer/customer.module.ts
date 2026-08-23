@@ -1,11 +1,11 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from '../user/user.module';
-import { CustomerService } from './application/customer.service';
-import { CustomerController } from './application/customer.controller';
-import { PostgresCustomerEntity } from './domain/postgres.customer-entity';
-import { CUSTOMER_DATA_SOURCE } from './domain/customer.repository';
-import { PostgresCustomerRepository } from './infrastructure/postgres-customer.repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { UserModule } from '../user/user.module'
+import { CustomerController } from './application/customer.controller'
+import { CustomerService } from './application/customer.service'
+import { CUSTOMER_DATA_SOURCE } from './domain/customer.repository'
+import { PostgresCustomerEntity } from './domain/postgres.customer-entity'
+import { PostgresCustomerRepository } from './infrastructure/postgres-customer.repository'
 
 @Module({
   imports: [UserModule, MikroOrmModule.forFeature([PostgresCustomerEntity])],

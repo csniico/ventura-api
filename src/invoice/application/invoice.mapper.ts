@@ -1,5 +1,5 @@
-import { IInvoice } from '../domain/invoice.entity';
-import { InvoiceResponse } from '../responses/invoice.response';
+import { IInvoice } from '../domain/invoice.entity'
+import { InvoiceResponse } from '../responses/invoice.response'
 
 /**
  * Project a domain `IInvoice` onto the public `InvoiceResponse` contract,
@@ -35,5 +35,5 @@ export function toInvoiceResponse(invoice: IInvoice): InvoiceResponse {
     notes: invoice.notes ?? null,
     createdAt: invoice.createdAt,
     updatedAt: invoice.updatedAt,
-  };
+  }
 }
