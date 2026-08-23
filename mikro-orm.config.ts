@@ -15,12 +15,13 @@ import { Migrator } from '@mikro-orm/migrations';
 
 export default defineConfig({
   driver: PostgreSqlDriver,
-  dbName: process.env.PG_DBNAME ?? 'ventura_dev',
-  user: process.env.PG_USER ?? 'postgres',
-  password: process.env.PG_PASSWORD ?? 'adminUser!234',
-  host: process.env.HOST ?? 'localhost',
-  port: 5432,
+  clientUrl: process.env.PG_URI,
   schema: 'public',
+  driverOptions: {
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  },
   entities: [
     PostgresUserEntity,
     PostgresEmailChangeEntity,
