@@ -19,9 +19,9 @@ RUN pnpm install --frozen-lockfile
 FROM base AS build
 COPY package.json pnpm-lock.yaml ./
 COPY --from=deps /app/node_modules ./node_modules
-# .swcrc drives the SWC compile (TypeScript 7 ships no programmatic compiler API,
-# so `nest build` / tsc-based builders can't run — we compile with @swc/cli).
-COPY .swcrc tsconfig.json ./
+# `nest build` reads nest-cli.json + tsconfig.build.json (whose `exclude` scopes
+# input to src so rootDir resolves against outDir).
+COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 COPY src ./src
 RUN pnpm build
 # Prune to production dependencies (rebuilds native modules like argon2 for this image).
