@@ -2195,13 +2195,31 @@ components:
         - name
         - createdAt
         - updatedAt
+    ImportCustomerDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Jane Doe
+        email:
+          type: string
+          format: email
+          example: jane@example.com
+        phone:
+          type: string
+          example: +1-555-987-6543
+        notes:
+          type: string
+          example: Prefers email contact.
+      required:
+        - name
     ImportCustomersDto:
       type: object
       properties:
         customers:
           type: array
           items:
-            $ref: "#/components/schemas/CreateCustomerDto"
+            $ref: "#/components/schemas/ImportCustomerDto"
       required:
         - customers
     BulkImportResultResponse:
