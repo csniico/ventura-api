@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.27.0",
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && swc src -d dist --strip-leading-paths --ignore \"**/*.spec.ts\" --ignore \"**/test-utils/**\"",
+    "build": "nest build",
     "format": "biome format --write ./src ./test",
     "start": "nest start",
     "dev": "nest start --watch",
@@ -87,7 +87,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.23.1",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
