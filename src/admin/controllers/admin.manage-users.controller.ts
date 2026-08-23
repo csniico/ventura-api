@@ -7,10 +7,10 @@ import {
   NotFoundException,
   Param,
   Post,
-} from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AdminManageUsersService } from '../services/admin.manage-users.service';
-import { toUserResponse } from '../../user/application/user.mapper';
+} from '@nestjs/common'
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { toUserResponse } from '../../user/application/user.mapper'
+import { AdminManageUsersService } from '../services/admin.manage-users.service'
 
 @ApiTags('Admin')
 @Controller('admin/users')
@@ -25,8 +25,8 @@ export class AdminManageUsersController {
   })
   @Get()
   async listUsers() {
-    const users = await this.manageUsers.listUsers();
-    return users.map(toUserResponse);
+    const users = await this.manageUsers.listUsers()
+    return users.map(toUserResponse)
   }
 
   /** Get a single user by id. */
@@ -34,7 +34,7 @@ export class AdminManageUsersController {
   @ApiResponse({ status: 200, schema: { type: 'object' } })
   @Get('/:id')
   async getUserById(@Param('id') id: string) {
-    return toUserResponse(await this.manageUsers.getUserById(id));
+    return toUserResponse(await this.manageUsers.getUserById(id))
   }
 
   /** Soft-delete a user (sets deleted=true). */
@@ -43,7 +43,7 @@ export class AdminManageUsersController {
   @HttpCode(HttpStatus.OK)
   @Delete('/:id')
   async softDeleteUser(@Param('id') id: string) {
-    return toUserResponse(await this.manageUsers.softDeleteUser(id));
+    return toUserResponse(await this.manageUsers.softDeleteUser(id))
   }
 
   /** Restore a soft-deleted user. */
@@ -52,7 +52,7 @@ export class AdminManageUsersController {
   @HttpCode(HttpStatus.OK)
   @Post('/:id/restore')
   async restoreUser(@Param('id') id: string) {
-    return toUserResponse(await this.manageUsers.restoreUser(id));
+    return toUserResponse(await this.manageUsers.restoreUser(id))
   }
 
   /** Permanently remove a user (admin-only, hard delete). */
@@ -61,10 +61,10 @@ export class AdminManageUsersController {
   @HttpCode(HttpStatus.OK)
   @Delete('/:id/permanent')
   async hardDeleteUser(@Param('id') id: string) {
-    const removed = await this.manageUsers.hardDeleteUser(id);
+    const removed = await this.manageUsers.hardDeleteUser(id)
     if (!removed) {
-      throw new NotFoundException('User not found.');
+      throw new NotFoundException('User not found.')
     }
-    return toUserResponse(removed);
+    return toUserResponse(removed)
   }
 }

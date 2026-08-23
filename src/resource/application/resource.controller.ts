@@ -12,28 +12,28 @@ import {
   Query,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from '@nestjs/common'
 import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { ResourceService } from './resource.service';
-import { toResourceResponse } from './resource.mapper';
-import { UserServiceV2 } from '../../user/application/user.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../../auth/types/auth.types';
-import { paginatedResponse } from '../../common/dto/paginated-response';
-import { paginate } from '../../common/dto/paginated';
-import { CreateResourceDto } from '../dto/create-resource.dto';
-import { UpdateResourceDto } from '../dto/update-resource.dto';
-import { ListResourceQueryDto } from '../dto/list-resource-query.dto';
-import { ResourceResponse } from '../responses/resource.response';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
+import { AuthUser } from '../../auth/types/auth.types'
+import { paginate } from '../../common/dto/paginated'
+import { paginatedResponse } from '../../common/dto/paginated-response'
+import { UserServiceV2 } from '../../user/application/user.service'
+import { CreateResourceDto } from '../dto/create-resource.dto'
+import { ListResourceQueryDto } from '../dto/list-resource-query.dto'
+import { UpdateResourceDto } from '../dto/update-resource.dto'
+import { ResourceResponse } from '../responses/resource.response'
+import { toResourceResponse } from './resource.mapper'
+import { ResourceService } from './resource.service'
 
 interface AuthedRequest {
-  user: AuthUser;
+  user: AuthUser
 }
 
 @ApiTags('Resources')
@@ -48,13 +48,13 @@ export class ResourceController {
 
   /** Resolve the caller's business id, or fail if they have no business yet. */
   private async resolveBusinessId(req: AuthedRequest): Promise<string> {
-    const user = await this.userService.getUserById(req.user.userId);
+    const user = await this.userService.getUserById(req.user.userId)
     if (!user.businessId) {
       throw new ForbiddenException(
         'You must create a business before managing resources.',
-      );
+      )
     }
-    return user.businessId;
+    return user.businessId
   }
 
   /** Create a product or service. */
@@ -63,10 +63,10 @@ export class ResourceController {
   @HttpCode(HttpStatus.CREATED)
   @Post()
   async create(@Req() req: AuthedRequest, @Body() dto: CreateResourceDto) {
-    const businessId = await this.resolveBusinessId(req);
+    const businessId = await this.resolveBusinessId(req)
     return toResourceResponse(
       await this.resourceService.create(businessId, dto),
-    );
+    )
   }
 
   /** List resources, optionally filtered by ?type=product|service. */
@@ -74,14 +74,14 @@ export class ResourceController {
   @ApiOkResponse({ type: paginatedResponse(ResourceResponse) })
   @Get()
   async list(@Req() req: AuthedRequest, @Query() query: ListResourceQueryDto) {
-    const businessId = await this.resolveBusinessId(req);
-    const page = await this.resourceService.list(businessId, query);
+    const businessId = await this.resolveBusinessId(req)
+    const page = await this.resourceService.list(businessId, query)
     return paginate(
       page.data.map(toResourceResponse),
       page.meta.total,
       page.meta.page,
       page.meta.limit,
-    );
+    )
   }
 
   /** Get a resource by id. */
@@ -89,10 +89,10 @@ export class ResourceController {
   @ApiResponse({ status: 200, type: ResourceResponse })
   @Get('/:id')
   async getById(@Req() req: AuthedRequest, @Param('id') id: string) {
-    const businessId = await this.resolveBusinessId(req);
+    const businessId = await this.resolveBusinessId(req)
     return toResourceResponse(
       await this.resourceService.getById(businessId, id),
-    );
+    )
   }
 
   /** Update a resource. */
@@ -105,10 +105,10 @@ export class ResourceController {
     @Param('id') id: string,
     @Body() dto: UpdateResourceDto,
   ) {
-    const businessId = await this.resolveBusinessId(req);
+    const businessId = await this.resolveBusinessId(req)
     return toResourceResponse(
       await this.resourceService.update(businessId, id, dto),
-    );
+    )
   }
 
   /** Delete a resource. */
@@ -117,9 +117,7 @@ export class ResourceController {
   @HttpCode(HttpStatus.OK)
   @Delete('/:id')
   async delete(@Req() req: AuthedRequest, @Param('id') id: string) {
-    const businessId = await this.resolveBusinessId(req);
-    return toResourceResponse(
-      await this.resourceService.delete(businessId, id),
-    );
+    const businessId = await this.resolveBusinessId(req)
+    return toResourceResponse(await this.resourceService.delete(businessId, id))
   }
 }

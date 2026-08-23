@@ -10,17 +10,22 @@ WORKDIR /app
 # ---- Dependencies (full, including dev — needed to build) ----
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
+# `onlyBuiltDependencies` in package.json already whitelists the native build
+# scripts we need (argon2, esbuild, …), so no need for --dangerouslyAllowAllBuilds
+# (which conflicts with that allowlist under pnpm 10).
+RUN pnpm install --frozen-lockfile
 
 # ---- Build ----
 FROM base AS build
 COPY package.json pnpm-lock.yaml ./
 COPY --from=deps /app/node_modules ./node_modules
-COPY tsconfig.json tsconfig.build.json nest-cli.json ./
+# .swcrc drives the SWC compile (TypeScript 7 ships no programmatic compiler API,
+# so `nest build` / tsc-based builders can't run — we compile with @swc/cli).
+COPY .swcrc tsconfig.json ./
 COPY src ./src
 RUN pnpm build
 # Prune to production dependencies (rebuilds native modules like argon2 for this image).
-RUN pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true --prod
+RUN pnpm install --frozen-lockfile --prod
 
 # ---- Runtime ----
 FROM node:22-slim AS runtime

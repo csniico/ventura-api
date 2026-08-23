@@ -1,5 +1,5 @@
-import { IAppointment } from '../domain/appointment.entity';
-import { AppointmentResponse } from '../responses/appointment.response';
+import { IAppointment } from '../domain/appointment.entity'
+import { AppointmentResponse } from '../responses/appointment.response'
 
 /**
  * Project a domain `IAppointment` onto the public `AppointmentResponse`,
@@ -33,5 +33,5 @@ export function toAppointmentResponse(
     status: appointment.status,
     createdAt: appointment.createdAt,
     updatedAt: appointment.updatedAt,
-  };
+  }
 }

@@ -1,13 +1,13 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from '../user/user.module';
-import { CustomerModule } from '../customer/customer.module';
-import { ResourceModule } from '../resource/resource.module';
-import { OrderService } from './application/order.service';
-import { OrderController } from './application/order.controller';
-import { PostgresOrderEntity } from './domain/postgres.order-entity';
-import { ORDER_DATA_SOURCE } from './domain/order.repository';
-import { PostgresOrderRepository } from './infrastructure/postgres-order.repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { CustomerModule } from '../customer/customer.module'
+import { ResourceModule } from '../resource/resource.module'
+import { UserModule } from '../user/user.module'
+import { OrderController } from './application/order.controller'
+import { OrderService } from './application/order.service'
+import { ORDER_DATA_SOURCE } from './domain/order.repository'
+import { PostgresOrderEntity } from './domain/postgres.order-entity'
+import { PostgresOrderRepository } from './infrastructure/postgres-order.repository'
 
 @Module({
   imports: [

@@ -13,4 +13,4 @@ export const SUGGESTED_CATEGORIES = [
   'health',
   'education',
   'other',
-] as const;
+] as const

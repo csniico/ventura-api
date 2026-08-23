@@ -1,5 +1,5 @@
-import { IBusiness } from '../domain/business.entity';
-import { BusinessResponse } from '../responses/business.response';
+import { IBusiness } from '../domain/business.entity'
+import { BusinessResponse } from '../responses/business.response'
 
 /**
  * Project a domain `IBusiness` onto the public `BusinessResponse` contract,
@@ -30,5 +30,5 @@ export function toBusinessResponse(business: IBusiness): BusinessResponse {
     isActive: business.isActive,
     createdAt: business.createdAt,
     updatedAt: business.updatedAt,
-  };
+  }
 }

@@ -1,13 +1,13 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from '../user/user.module';
-import { PostgresAdminEntity } from './domain/postgres.admin-entity';
-import { ADMIN_DATA_SOURCE } from './domain/admin.repository';
-import { PostgresAdminRepository } from './infrastructure/postgres-admin.repository';
-import { AdminProfileService } from './application/admin-profile.service';
-import { AdminManageUsersService } from './services/admin.manage-users.service';
-import { AdminProfileController } from './controllers/admin-profile.controller';
-import { AdminManageUsersController } from './controllers/admin.manage-users.controller';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { UserModule } from '../user/user.module'
+import { AdminProfileService } from './application/admin-profile.service'
+import { AdminManageUsersController } from './controllers/admin.manage-users.controller'
+import { AdminProfileController } from './controllers/admin-profile.controller'
+import { ADMIN_DATA_SOURCE } from './domain/admin.repository'
+import { PostgresAdminEntity } from './domain/postgres.admin-entity'
+import { PostgresAdminRepository } from './infrastructure/postgres-admin.repository'
+import { AdminManageUsersService } from './services/admin.manage-users.service'
 
 @Module({
   imports: [UserModule, MikroOrmModule.forFeature([PostgresAdminEntity])],

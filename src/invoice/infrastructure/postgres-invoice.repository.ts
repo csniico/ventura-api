@@ -1,21 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/postgresql';
-import type { FilterQuery } from '@mikro-orm/core';
-import { DailyRevenue, IInvoice, InvoiceStatus } from '../domain/invoice.entity';
+import type { FilterQuery } from '@mikro-orm/core'
+import { EntityManager } from '@mikro-orm/postgresql'
+import { Injectable } from '@nestjs/common'
+import { DailyRevenue, IInvoice, InvoiceStatus } from '../domain/invoice.entity'
 import {
   ICreateInvoice,
-  IUpdateInvoice,
   InvoiceRepository,
+  IUpdateInvoice,
   ListInvoicesOptions,
-} from '../domain/invoice.repository';
+} from '../domain/invoice.repository'
 import {
   PostgresInvoice,
   PostgresInvoiceEntity,
-} from '../domain/postgres.invoice-entity';
+} from '../domain/postgres.invoice-entity'
 
 /** Escape LIKE/ILIKE wildcards so a raw search term matches literally. */
 function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`)
 }
 
 @Injectable()
@@ -24,7 +24,7 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
 
   private toDomain(entity: PostgresInvoice): IInvoice {
     // double precision may surface as string via the driver; normalise money.
-    const num = (v: string | number) => Number(v);
+    const num = (v: string | number) => Number(v)
     return {
       id: entity.id,
       invoiceNumber: entity.invoiceNumber,
@@ -54,44 +54,44 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
       notes: entity.notes,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-    };
+    }
   }
 
   async create(data: ICreateInvoice): Promise<IInvoice> {
-    const invoice = this.em.create(PostgresInvoiceEntity, data);
-    await this.em.flush();
-    return this.toDomain(invoice);
+    const invoice = this.em.create(PostgresInvoiceEntity, data)
+    await this.em.flush()
+    return this.toDomain(invoice)
   }
 
   async findById(businessId: string, id: string): Promise<IInvoice | null> {
     const invoice = await this.em.findOne(PostgresInvoiceEntity, {
       id,
       businessId,
-    });
-    return invoice ? this.toDomain(invoice) : null;
+    })
+    return invoice ? this.toDomain(invoice) : null
   }
 
   async list(
     businessId: string,
     opts: ListInvoicesOptions,
   ): Promise<{ data: IInvoice[]; total: number }> {
-    const where: FilterQuery<PostgresInvoice> = { businessId };
-    if (opts.status) where.status = opts.status;
-    if (opts.customerId) where.customerId = opts.customerId;
+    const where: FilterQuery<PostgresInvoice> = { businessId }
+    if (opts.status) where.status = opts.status
+    if (opts.customerId) where.customerId = opts.customerId
     if (opts.q?.trim()) {
-      const like = `%${escapeLike(opts.q.trim())}%`;
+      const like = `%${escapeLike(opts.q.trim())}%`
       where.$or = [
         { invoiceNumber: { $ilike: like } },
         { customerName: { $ilike: like } },
-      ];
+      ]
     }
 
     const [rows, total] = await this.em.findAndCount(
       PostgresInvoiceEntity,
       where,
       { orderBy: { createdAt: 'DESC' }, limit: opts.limit, offset: opts.skip },
-    );
-    return { data: rows.map((i) => this.toDomain(i)), total };
+    )
+    return { data: rows.map((i) => this.toDomain(i)), total }
   }
 
   async update(
@@ -102,16 +102,16 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
     const invoice = await this.em.findOne(PostgresInvoiceEntity, {
       id,
       businessId,
-    });
+    })
     if (!invoice) {
-      return null;
+      return null
     }
     const clean = Object.fromEntries(
       Object.entries(patch).filter(([, v]) => v !== undefined),
-    );
-    this.em.assign(invoice, clean);
-    await this.em.flush();
-    return this.toDomain(invoice);
+    )
+    this.em.assign(invoice, clean)
+    await this.em.flush()
+    return this.toDomain(invoice)
   }
 
   async sumAmountPaid(
@@ -121,20 +121,20 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
   ): Promise<number> {
     let sql = `select coalesce(sum(amount_paid), 0) as total
                from invoices
-               where business_id = ? and amount_paid > 0`;
-    const params: unknown[] = [businessId];
+               where business_id = ? and amount_paid > 0`
+    const params: unknown[] = [businessId]
     if (from) {
-      sql += ` and payment_date >= ?`;
-      params.push(from);
+      sql += ` and payment_date >= ?`
+      params.push(from)
     }
     if (to) {
-      sql += ` and payment_date < ?`;
-      params.push(to);
+      sql += ` and payment_date < ?`
+      params.push(to)
     }
     const rows = await this.em
       .getConnection()
-      .execute<{ total: string | number }[]>(sql, params);
-    return Number(rows[0]?.total ?? 0);
+      .execute<{ total: string | number }[]>(sql, params)
+    return Number(rows[0]?.total ?? 0)
   }
 
   async recent(businessId: string, limit: number): Promise<IInvoice[]> {
@@ -142,8 +142,8 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
       PostgresInvoiceEntity,
       { businessId },
       { orderBy: { createdAt: 'DESC' }, limit },
-    );
-    return rows.map((i) => this.toDomain(i));
+    )
+    return rows.map((i) => this.toDomain(i))
   }
 
   async dailyRevenue(
@@ -164,19 +164,19 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
        group by 1
        order by 1`,
         [businessId, from, to],
-      );
-    return rows.map((r) => ({ date: r.date, amount: Number(r.amount) }));
+      )
+    return rows.map((r) => ({ date: r.date, amount: Number(r.amount) }))
   }
 
   async markOverdue(now: Date): Promise<number> {
     // A null dueDate never matches $lt, so unscheduled invoices are left alone.
-    return this.em.nativeUpdate(
+    return await this.em.nativeUpdate(
       PostgresInvoiceEntity,
       {
         status: { $in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID] },
         dueDate: { $lt: now },
       },
       { status: InvoiceStatus.OVERDUE },
-    );
+    )
   }
 }

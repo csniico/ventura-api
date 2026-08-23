@@ -3,25 +3,25 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { CustomerService } from '../../customer/application/customer.service';
+} from '@nestjs/common'
+import { CustomerService } from '../../customer/application/customer.service'
 import {
   AppointmentStatus,
   IAppointment,
   Invitee,
   Recurrence,
-} from '../domain/appointment.entity';
-import { APPOINTMENT_DATA_SOURCE } from '../domain/appointment.repository';
+} from '../domain/appointment.entity'
 import type {
   AppointmentRepository,
   IUpdateAppointment,
-} from '../domain/appointment.repository';
+} from '../domain/appointment.repository'
+import { APPOINTMENT_DATA_SOURCE } from '../domain/appointment.repository'
 import {
   CreateAppointmentDto,
   InviteeDto,
   RecurrenceDto,
-} from '../dto/create-appointment.dto';
-import { UpdateAppointmentDto } from '../dto/update-appointment.dto';
+} from '../dto/create-appointment.dto'
+import { UpdateAppointmentDto } from '../dto/update-appointment.dto'
 
 /**
  * Postgres-backed appointment service. Data access goes through the
@@ -41,7 +41,7 @@ export class AppointmentService {
   /** Validate that end is strictly after start. */
   private assertValidRange(start: Date, end: Date): void {
     if (end.getTime() <= start.getTime()) {
-      throw new BadRequestException('end must be after start.');
+      throw new BadRequestException('end must be after start.')
     }
   }
 
@@ -56,16 +56,16 @@ export class AppointmentService {
   ): Promise<void> {
     await Promise.all(
       invitees.map(async (invitee) => {
-        if (!invitee.customerId) return;
+        if (!invitee.customerId) return
         try {
-          await this.customerService.getById(businessId, invitee.customerId);
+          await this.customerService.getById(businessId, invitee.customerId)
         } catch {
           throw new BadRequestException(
             `Invitee "${invitee.name}" references a customer that does not exist in this business.`,
-          );
+          )
         }
       }),
-    );
+    )
   }
 
   private toInvitees(invitees: InviteeDto[] = []): Invitee[] {
@@ -73,7 +73,7 @@ export class AppointmentService {
       name: i.name,
       email: i.email ?? null,
       customerId: i.customerId ?? null,
-    }));
+    }))
   }
 
   private toRecurrence(recurrence: RecurrenceDto): Recurrence {
@@ -81,7 +81,7 @@ export class AppointmentService {
       frequency: recurrence.frequency,
       interval: recurrence.interval ?? 1,
       until: recurrence.until ? new Date(recurrence.until) : null,
-    };
+    }
   }
 
   /** Create an appointment for a business. */
@@ -90,10 +90,10 @@ export class AppointmentService {
     createdBy: string,
     dto: CreateAppointmentDto,
   ): Promise<IAppointment> {
-    const start = new Date(dto.start);
-    const end = new Date(dto.end);
-    this.assertValidRange(start, end);
-    await this.validateInvitees(businessId, dto.invitees);
+    const start = new Date(dto.start)
+    const end = new Date(dto.end)
+    this.assertValidRange(start, end)
+    await this.validateInvitees(businessId, dto.invitees)
 
     return this.appointmentRepository.create({
       businessId,
@@ -105,7 +105,7 @@ export class AppointmentService {
       location: dto.location ?? null,
       invitees: this.toInvitees(dto.invitees),
       recurrence: dto.recurrence ? this.toRecurrence(dto.recurrence) : null,
-    });
+    })
   }
 
   /**
@@ -117,11 +117,11 @@ export class AppointmentService {
     from?: string,
     to?: string,
   ): Promise<IAppointment[]> {
-    return this.appointmentRepository.list(
+    return await this.appointmentRepository.list(
       businessId,
       from ? new Date(from) : undefined,
       to ? new Date(to) : undefined,
-    );
+    )
   }
 
   /**
@@ -133,9 +133,9 @@ export class AppointmentService {
     q: string,
     limit = 5,
   ): Promise<IAppointment[]> {
-    const query = q.trim();
-    if (!query) return [];
-    return this.appointmentRepository.search(businessId, query, limit);
+    const query = q.trim()
+    if (!query) return []
+    return await this.appointmentRepository.search(businessId, query, limit)
   }
 
   /** Get an appointment by id, scoped to the business. */
@@ -146,11 +146,11 @@ export class AppointmentService {
     const appointment = await this.appointmentRepository.findById(
       businessId,
       appointmentId,
-    );
+    )
     if (!appointment) {
-      throw new NotFoundException('Appointment not found.');
+      throw new NotFoundException('Appointment not found.')
     }
-    return appointment;
+    return appointment
   }
 
   /** Set an appointment's status (scheduled / completed / attended / cancelled). */
@@ -159,16 +159,16 @@ export class AppointmentService {
     appointmentId: string,
     status: AppointmentStatus,
   ): Promise<IAppointment> {
-    await this.getById(businessId, appointmentId);
+    await this.getById(businessId, appointmentId)
     const updated = await this.appointmentRepository.update(
       businessId,
       appointmentId,
       { status },
-    );
+    )
     if (!updated) {
-      throw new NotFoundException('Appointment not found.');
+      throw new NotFoundException('Appointment not found.')
     }
-    return updated;
+    return updated
   }
 
   /** Update an appointment, scoped to the business. */
@@ -177,38 +177,38 @@ export class AppointmentService {
     appointmentId: string,
     dto: UpdateAppointmentDto,
   ): Promise<IAppointment> {
-    const appointment = await this.getById(businessId, appointmentId);
+    const appointment = await this.getById(businessId, appointmentId)
 
-    const patch: IUpdateAppointment = {};
-    if (dto.title !== undefined) patch.title = dto.title;
-    if (dto.notes !== undefined) patch.notes = dto.notes;
-    if (dto.location !== undefined) patch.location = dto.location;
+    const patch: IUpdateAppointment = {}
+    if (dto.title !== undefined) patch.title = dto.title
+    if (dto.notes !== undefined) patch.notes = dto.notes
+    if (dto.location !== undefined) patch.location = dto.location
 
-    const start = dto.start ? new Date(dto.start) : appointment.start;
-    const end = dto.end ? new Date(dto.end) : appointment.end;
+    const start = dto.start ? new Date(dto.start) : appointment.start
+    const end = dto.end ? new Date(dto.end) : appointment.end
     if (dto.start !== undefined || dto.end !== undefined) {
-      this.assertValidRange(start, end);
-      patch.start = start;
-      patch.end = end;
+      this.assertValidRange(start, end)
+      patch.start = start
+      patch.end = end
     }
 
     if (dto.invitees !== undefined) {
-      await this.validateInvitees(businessId, dto.invitees);
-      patch.invitees = this.toInvitees(dto.invitees);
+      await this.validateInvitees(businessId, dto.invitees)
+      patch.invitees = this.toInvitees(dto.invitees)
     }
 
     if (dto.clearRecurrence) {
-      patch.recurrence = null;
+      patch.recurrence = null
     } else if (dto.recurrence !== undefined) {
-      patch.recurrence = this.toRecurrence(dto.recurrence);
+      patch.recurrence = this.toRecurrence(dto.recurrence)
     }
 
     const updated = await this.appointmentRepository.update(
       businessId,
       appointmentId,
       patch,
-    );
-    return updated ?? appointment;
+    )
+    return updated ?? appointment
   }
 
   /** Delete an appointment, scoped to the business. */
@@ -219,10 +219,10 @@ export class AppointmentService {
     const removed = await this.appointmentRepository.delete(
       businessId,
       appointmentId,
-    );
+    )
     if (!removed) {
-      throw new NotFoundException('Appointment not found.');
+      throw new NotFoundException('Appointment not found.')
     }
-    return removed;
+    return removed
   }
 }

@@ -1,6 +1,6 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
-import { OrderItemSnapshot, OrderStatus } from './order.entity';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
+import { OrderItemSnapshot, OrderStatus } from './order.entity'
 
 /**
  * Postgres mapping for an order (MikroORM v7 schema-first `defineEntity`).
@@ -42,6 +42,6 @@ export const PostgresOrderEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresOrder = InferEntity<typeof PostgresOrderEntity>;
+export type PostgresOrder = InferEntity<typeof PostgresOrderEntity>

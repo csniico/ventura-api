@@ -1,4 +1,4 @@
-import type { EventEmitter2 } from '@nestjs/event-emitter';
+import type { EventEmitter2 } from '@nestjs/event-emitter'
 
 /** Event names emitted for user account lifecycle changes. */
 export const UserEvents = {
@@ -6,14 +6,14 @@ export const UserEvents = {
   RESTORED: 'user.restored',
   // Permanent (hard) deletion, performed by an admin.
   PERMANENTLY_DELETED: 'user.permanently_deleted',
-} as const;
+} as const
 
-export type UserEventName = (typeof UserEvents)[keyof typeof UserEvents];
+export type UserEventName = (typeof UserEvents)[keyof typeof UserEvents]
 
 /** Payload for user account lifecycle events. */
 export interface UserAccountEvent {
-  userId: string;
-  timestamp: Date;
+  userId: string
+  timestamp: Date
 }
 
 /**
@@ -26,5 +26,5 @@ export function emitUserEvent(
   event: UserEventName,
   payload: UserAccountEvent,
 ): void {
-  emitter.emit(event, payload);
+  emitter.emit(event, payload)
 }

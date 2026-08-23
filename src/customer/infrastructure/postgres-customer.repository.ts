@@ -1,21 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/postgresql';
-import type { FilterQuery } from '@mikro-orm/core';
-import { ICustomer } from '../domain/customer.entity';
+import type { FilterQuery } from '@mikro-orm/core'
+import { EntityManager } from '@mikro-orm/postgresql'
+import { Injectable } from '@nestjs/common'
+import { ICustomer } from '../domain/customer.entity'
 import {
   CustomerRepository,
   ICreateCustomer,
   IUpdateCustomer,
   ListCustomersOptions,
-} from '../domain/customer.repository';
+} from '../domain/customer.repository'
 import {
   PostgresCustomer,
   PostgresCustomerEntity,
-} from '../domain/postgres.customer-entity';
+} from '../domain/postgres.customer-entity'
 
 /** Escape LIKE/ILIKE wildcards so a raw search term matches literally. */
 function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`)
 }
 
 @Injectable()
@@ -33,21 +33,21 @@ export class PostgresCustomerRepository implements CustomerRepository {
       notes: entity.notes,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-    };
+    }
   }
 
   async create(data: ICreateCustomer): Promise<ICustomer> {
-    const customer = this.em.create(PostgresCustomerEntity, data);
-    await this.em.flush();
-    return this.toDomain(customer);
+    const customer = this.em.create(PostgresCustomerEntity, data)
+    await this.em.flush()
+    return this.toDomain(customer)
   }
 
   async findById(businessId: string, id: string): Promise<ICustomer | null> {
     const customer = await this.em.findOne(PostgresCustomerEntity, {
       id,
       businessId,
-    });
-    return customer ? this.toDomain(customer) : null;
+    })
+    return customer ? this.toDomain(customer) : null
   }
 
   async emailExists(businessId: string, email: string): Promise<boolean> {
@@ -57,30 +57,30 @@ export class PostgresCustomerRepository implements CustomerRepository {
     const count = await this.em.count(PostgresCustomerEntity, {
       businessId,
       email: { $ilike: escapeLike(email) },
-    });
-    return count > 0;
+    })
+    return count > 0
   }
 
   async list(
     businessId: string,
     opts: ListCustomersOptions,
   ): Promise<{ data: ICustomer[]; total: number }> {
-    const where: FilterQuery<PostgresCustomer> = { businessId };
+    const where: FilterQuery<PostgresCustomer> = { businessId }
     if (opts.q?.trim()) {
-      const like = `%${escapeLike(opts.q.trim())}%`;
+      const like = `%${escapeLike(opts.q.trim())}%`
       where.$or = [
         { name: { $ilike: like } },
         { email: { $ilike: like } },
         { phone: { $ilike: like } },
-      ];
+      ]
     }
 
     const [rows, total] = await this.em.findAndCount(
       PostgresCustomerEntity,
       where,
       { orderBy: { createdAt: 'DESC' }, limit: opts.limit, offset: opts.skip },
-    );
-    return { data: rows.map((r) => this.toDomain(r)), total };
+    )
+    return { data: rows.map((r) => this.toDomain(r)), total }
   }
 
   async update(
@@ -91,30 +91,30 @@ export class PostgresCustomerRepository implements CustomerRepository {
     const customer = await this.em.findOne(PostgresCustomerEntity, {
       id,
       businessId,
-    });
+    })
     if (!customer) {
-      return null;
+      return null
     }
     // Drop undefined keys (a DTO instance carries every optional field as
     // undefined); MikroORM's assign rejects undefined values.
     const clean = Object.fromEntries(
       Object.entries(patch).filter(([, v]) => v !== undefined),
-    );
-    this.em.assign(customer, clean);
-    await this.em.flush();
-    return this.toDomain(customer);
+    )
+    this.em.assign(customer, clean)
+    await this.em.flush()
+    return this.toDomain(customer)
   }
 
   async delete(businessId: string, id: string): Promise<ICustomer | null> {
     const customer = await this.em.findOne(PostgresCustomerEntity, {
       id,
       businessId,
-    });
+    })
     if (!customer) {
-      return null;
+      return null
     }
-    const removed = this.toDomain(customer);
-    await this.em.nativeDelete(PostgresCustomerEntity, { id, businessId });
-    return removed;
+    const removed = this.toDomain(customer)
+    await this.em.nativeDelete(PostgresCustomerEntity, { id, businessId })
+    return removed
   }
 }

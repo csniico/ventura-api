@@ -1,10 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import type { Request } from 'express';
-import { AuthService } from '../auth.service';
-import { AuthUser, JwtPayload } from '../types/auth.types';
+import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { PassportStrategy } from '@nestjs/passport'
+import type { Request } from 'express'
+import { ExtractJwt, Strategy } from 'passport-jwt'
+import { AuthService } from '../auth.service'
+import { AuthUser, JwtPayload } from '../types/auth.types'
 
 @Injectable()
 export class RefreshJwtStrategy extends PassportStrategy(
@@ -20,7 +20,7 @@ export class RefreshJwtStrategy extends PassportStrategy(
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_REFRESH_SECRET', ''),
       passReqToCallback: true,
-    });
+    })
   }
 
   /**
@@ -28,14 +28,14 @@ export class RefreshJwtStrategy extends PassportStrategy(
    * the raw token against the user's stored hash so revoked tokens are rejected.
    */
   async validate(req: Request, payload: JwtPayload): Promise<AuthUser> {
-    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req)
     if (!token) {
-      throw new UnauthorizedException('Refresh token missing.');
+      throw new UnauthorizedException('Refresh token missing.')
     }
-    const valid = await this.authService.verifyRefreshToken(payload.sub, token);
+    const valid = await this.authService.verifyRefreshToken(payload.sub, token)
     if (!valid) {
-      throw new UnauthorizedException('Invalid refresh token.');
+      throw new UnauthorizedException('Invalid refresh token.')
     }
-    return { userId: payload.sub };
+    return { userId: payload.sub }
   }
 }

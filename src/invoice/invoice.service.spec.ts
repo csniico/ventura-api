@@ -1,34 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
-} from '@nestjs/common';
-
-import { InvoiceService } from './application/invoice.service';
-import { InvoiceStatus, PaymentMethod } from './domain/invoice.entity';
-import {
-  FakeInvoiceRepository,
-  fakeInvoiceServiceProviders,
-} from '../test-utils/fake-invoice';
-import { OrderService } from '../order/application/order.service';
-import {
-  FakeOrderRepository,
-  fakeOrderServiceProviders,
-} from '../test-utils/fake-order';
-import { CustomerService } from '../customer/application/customer.service';
+} from '@nestjs/common'
+import { Test, TestingModule } from '@nestjs/testing'
+import { CustomerService } from '../customer/application/customer.service'
+import { MailService } from '../mail/mail.service'
+import { OrderService } from '../order/application/order.service'
+import { ResourceService } from '../resource/application/resource.service'
+import { ResourceType } from '../resource/domain/resource.entity'
 import {
   FakeCustomerRepository,
   fakeCustomerServiceProviders,
-} from '../test-utils/fake-customer';
-import { ResourceService } from '../resource/application/resource.service';
-import { ResourceType } from '../resource/domain/resource.entity';
+} from '../test-utils/fake-customer'
+import {
+  FakeInvoiceRepository,
+  fakeInvoiceServiceProviders,
+} from '../test-utils/fake-invoice'
+import {
+  FakeOrderRepository,
+  fakeOrderServiceProviders,
+} from '../test-utils/fake-order'
 import {
   FakeResourceRepository,
   fakeResourceServiceProviders,
-} from '../test-utils/fake-resource';
-import { MailService } from '../mail/mail.service';
-import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
+} from '../test-utils/fake-resource'
+import { mockFileStorageProvider } from '../test-utils/file-storage.mock'
+import { InvoiceService } from './application/invoice.service'
+import { InvoiceStatus, PaymentMethod } from './domain/invoice.entity'
 
 /**
  * Behavioural spec for the Postgres-backed InvoiceService, run against in-memory
@@ -36,28 +35,28 @@ import { mockFileStorageProvider } from '../test-utils/file-storage.mock';
  * (ILIKE search, revenue aggregations) is covered by the live smoke test.
  */
 describe('InvoiceService (behavioural, fake repositories)', () => {
-  let moduleRef: TestingModule;
-  let invoices: InvoiceService;
-  let invoicesFake: FakeInvoiceRepository;
-  let orders: OrderService;
-  let ordersFake: FakeOrderRepository;
-  let customers: CustomerService;
-  let customersFake: FakeCustomerRepository;
-  let resources: ResourceService;
-  let resourcesFake: FakeResourceRepository;
-  const sendInvoice = jest.fn();
+  let moduleRef: TestingModule
+  let invoices: InvoiceService
+  let invoicesFake: FakeInvoiceRepository
+  let orders: OrderService
+  let ordersFake: FakeOrderRepository
+  let customers: CustomerService
+  let customersFake: FakeCustomerRepository
+  let resources: ResourceService
+  let resourcesFake: FakeResourceRepository
+  const sendInvoice = jest.fn()
 
-  const businessA = 'biz-A';
+  const businessA = 'biz-A'
 
   beforeAll(async () => {
-    const fakeInvoices = fakeInvoiceServiceProviders();
-    invoicesFake = fakeInvoices.invoices;
-    const fakeCustomers = fakeCustomerServiceProviders();
-    customersFake = fakeCustomers.customers;
-    const fakeResources = fakeResourceServiceProviders();
-    resourcesFake = fakeResources.resources;
-    const fakeOrders = fakeOrderServiceProviders();
-    ordersFake = fakeOrders.orders;
+    const fakeInvoices = fakeInvoiceServiceProviders()
+    invoicesFake = fakeInvoices.invoices
+    const fakeCustomers = fakeCustomerServiceProviders()
+    customersFake = fakeCustomers.customers
+    const fakeResources = fakeResourceServiceProviders()
+    resourcesFake = fakeResources.resources
+    const fakeOrders = fakeOrderServiceProviders()
+    ordersFake = fakeOrders.orders
 
     moduleRef = await Test.createTestingModule({
       providers: [
@@ -68,25 +67,25 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
         mockFileStorageProvider,
         { provide: MailService, useValue: { sendInvoice } },
       ],
-    }).compile();
+    }).compile()
 
-    invoices = moduleRef.get(InvoiceService);
-    orders = moduleRef.get(OrderService);
-    customers = moduleRef.get(CustomerService);
-    resources = moduleRef.get(ResourceService);
-  });
+    invoices = moduleRef.get(InvoiceService)
+    orders = moduleRef.get(OrderService)
+    customers = moduleRef.get(CustomerService)
+    resources = moduleRef.get(ResourceService)
+  })
 
   beforeEach(() => {
-    sendInvoice.mockClear();
-    invoicesFake._clear();
-    ordersFake._clear();
-    customersFake._clear();
-    resourcesFake._clear();
-  });
+    sendInvoice.mockClear()
+    invoicesFake._clear()
+    ordersFake._clear()
+    customersFake._clear()
+    resourcesFake._clear()
+  })
 
   afterAll(async () => {
-    await moduleRef.close();
-  });
+    await moduleRef.close()
+  })
 
   /** Create a customer + a service-only order worth `amount`, return ids. */
   async function makeOrder(
@@ -94,113 +93,113 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
     customerId?: string,
   ): Promise<{ orderId: string; customerId: string }> {
     const cid =
-      customerId ?? (await customers.create(businessA, { name: 'Ada' })).id;
+      customerId ?? (await customers.create(businessA, { name: 'Ada' })).id
     const service = await resources.create(businessA, {
       type: ResourceType.SERVICE,
       name: 'Svc',
       price: amount,
-    });
+    })
     const order = await orders.create(businessA, {
       customerId: cid,
       items: [{ resourceId: service.id, quantity: 1 }],
-    });
-    return { orderId: order.id, customerId: cid };
+    })
+    return { orderId: order.id, customerId: cid }
   }
 
   describe('create', () => {
     it('computes the Ghana VAT breakdown and links the orders', async () => {
-      const { orderId } = await makeOrder(100);
+      const { orderId } = await makeOrder(100)
 
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
 
-      expect(invoice.invoiceNumber).toMatch(/^VEN-/);
-      expect(invoice.subtotal).toBe(100);
+      expect(invoice.invoiceNumber).toMatch(/^VEN-/)
+      expect(invoice.subtotal).toBe(100)
       // Ghana VAT: NHIL + GETFund on subtotal; 15% VAT on the levy-inclusive
       // base (105), i.e. 105 * 0.15 = 15.75.
-      expect(invoice.nhilAmount).toBe(2.5); // 2.5%
-      expect(invoice.getfundAmount).toBe(2.5); // 2.5%
-      expect(invoice.vatAmount).toBe(15.75); // 15% of 105
-      expect(invoice.totalTax).toBe(20.75);
-      expect(invoice.totalAmount).toBe(120.75);
-      expect(invoice.status).toBe(InvoiceStatus.DRAFT);
+      expect(invoice.nhilAmount).toBe(2.5) // 2.5%
+      expect(invoice.getfundAmount).toBe(2.5) // 2.5%
+      expect(invoice.vatAmount).toBe(15.75) // 15% of 105
+      expect(invoice.totalTax).toBe(20.75)
+      expect(invoice.totalAmount).toBe(120.75)
+      expect(invoice.status).toBe(InvoiceStatus.DRAFT)
 
       // Order is now linked to the invoice.
-      const order = ordersFake._get(orderId);
-      expect(order?.invoiceId).toBe(invoice.id);
-    });
+      const order = ordersFake._get(orderId)
+      expect(order?.invoiceId).toBe(invoice.id)
+    })
 
     it('sums multiple orders from the same customer', async () => {
-      const { orderId: o1, customerId } = await makeOrder(100);
-      const { orderId: o2 } = await makeOrder(50, customerId);
+      const { orderId: o1, customerId } = await makeOrder(100)
+      const { orderId: o2 } = await makeOrder(50, customerId)
 
       const invoice = await invoices.create(businessA, {
         orderIds: [o1, o2],
-      });
-      expect(invoice.subtotal).toBe(150);
+      })
+      expect(invoice.subtotal).toBe(150)
       // 150 + (150*0.025)*2 levies + 0.15*(150+7.5) VAT = 150 + 7.5 + 23.63.
-      expect(invoice.totalAmount).toBe(181.13);
-    });
+      expect(invoice.totalAmount).toBe(181.13)
+    })
 
     it('rejects orders already on an invoice', async () => {
-      const { orderId } = await makeOrder(100);
-      await invoices.create(businessA, { orderIds: [orderId] });
+      const { orderId } = await makeOrder(100)
+      await invoices.create(businessA, { orderIds: [orderId] })
 
       await expect(
         invoices.create(businessA, { orderIds: [orderId] }),
-      ).rejects.toBeInstanceOf(ConflictException);
-    });
+      ).rejects.toBeInstanceOf(ConflictException)
+    })
 
     it('rejects orders from different customers on one invoice', async () => {
-      const { orderId: o1 } = await makeOrder(100);
-      const { orderId: o2 } = await makeOrder(50); // different customer
+      const { orderId: o1 } = await makeOrder(100)
+      const { orderId: o2 } = await makeOrder(50) // different customer
 
       await expect(
         invoices.create(businessA, { orderIds: [o1, o2] }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
+      ).rejects.toBeInstanceOf(BadRequestException)
+    })
 
     it('throws NotFound when an order is not in the business', async () => {
       await expect(
         invoices.create(businessA, {
           orderIds: ['64b000000000000000000000'],
         }),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
-  });
+      ).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
 
   describe('recordPayment', () => {
     it('marks PARTIALLY_PAID then PAID across payments', async () => {
-      const { orderId } = await makeOrder(100); // total 120.75
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
-      const id = invoice.id;
+      const { orderId } = await makeOrder(100) // total 120.75
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
+      const id = invoice.id
 
       let updated = await invoices.recordPayment(businessA, id, {
         amount: 50,
         paymentMethod: PaymentMethod.CASH,
-      });
-      expect(updated.amountPaid).toBe(50);
-      expect(updated.status).toBe(InvoiceStatus.PARTIALLY_PAID);
+      })
+      expect(updated.amountPaid).toBe(50)
+      expect(updated.status).toBe(InvoiceStatus.PARTIALLY_PAID)
 
       updated = await invoices.recordPayment(businessA, id, {
         amount: 70.75,
         paymentMethod: PaymentMethod.MOBILE_MONEY,
-      });
-      expect(updated.amountPaid).toBe(120.75);
-      expect(updated.status).toBe(InvoiceStatus.PAID);
-    });
+      })
+      expect(updated.amountPaid).toBe(120.75)
+      expect(updated.status).toBe(InvoiceStatus.PAID)
+    })
 
     it('rejects overpayment', async () => {
-      const { orderId } = await makeOrder(100); // total 120.75
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
+      const { orderId } = await makeOrder(100) // total 120.75
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
 
       await expect(
         invoices.recordPayment(businessA, invoice.id, {
           amount: 200,
           paymentMethod: PaymentMethod.CASH,
         }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
-  });
+      ).rejects.toBeInstanceOf(BadRequestException)
+    })
+  })
 
   describe('send', () => {
     it('sets sentAt, moves DRAFT to SENT, and emails the customer', async () => {
@@ -211,20 +210,20 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
             email: 'ada@example.com',
           })
         ).id,
-      );
-      const { orderId } = await makeOrder(100, cid);
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
+      )
+      const { orderId } = await makeOrder(100, cid)
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
 
-      const sent = await invoices.send(businessA, invoice.id, {});
+      const sent = await invoices.send(businessA, invoice.id, {})
 
-      expect(sent.status).toBe(InvoiceStatus.SENT);
-      expect(sent.sentAt).toBeInstanceOf(Date);
-      expect(sendInvoice).toHaveBeenCalledTimes(1);
+      expect(sent.status).toBe(InvoiceStatus.SENT)
+      expect(sent.sentAt).toBeInstanceOf(Date)
+      expect(sendInvoice).toHaveBeenCalledTimes(1)
       expect(sendInvoice).toHaveBeenCalledWith(
         'ada@example.com',
         expect.objectContaining({ invoiceNumber: invoice.invoiceNumber }),
-      );
-    });
+      )
+    })
 
     it('overrides the recipient with dto.email', async () => {
       const cid = String(
@@ -234,29 +233,29 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
             email: 'ada@example.com',
           })
         ).id,
-      );
-      const { orderId } = await makeOrder(100, cid);
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
+      )
+      const { orderId } = await makeOrder(100, cid)
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
 
       await invoices.send(businessA, invoice.id, {
         email: 'override@example.com',
-      });
+      })
 
       expect(sendInvoice).toHaveBeenCalledWith(
         'override@example.com',
         expect.any(Object),
-      );
-    });
+      )
+    })
 
     it('throws BadRequest when there is no recipient email', async () => {
-      const { orderId } = await makeOrder(100); // customer has no email
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
+      const { orderId } = await makeOrder(100) // customer has no email
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
 
       await expect(
         invoices.send(businessA, invoice.id, {}),
-      ).rejects.toBeInstanceOf(BadRequestException);
-      expect(sendInvoice).not.toHaveBeenCalled();
-    });
+      ).rejects.toBeInstanceOf(BadRequestException)
+      expect(sendInvoice).not.toHaveBeenCalled()
+    })
 
     it('does not downgrade a PAID invoice status', async () => {
       const cid = String(
@@ -266,19 +265,19 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
             email: 'ada@example.com',
           })
         ).id,
-      );
-      const { orderId } = await makeOrder(100, cid);
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
+      )
+      const { orderId } = await makeOrder(100, cid)
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
       await invoices.recordPayment(businessA, invoice.id, {
         amount: 120.75,
         paymentMethod: PaymentMethod.CASH,
-      });
+      })
 
-      const sent = await invoices.send(businessA, invoice.id, {});
+      const sent = await invoices.send(businessA, invoice.id, {})
 
-      expect(sent.status).toBe(InvoiceStatus.PAID);
-      expect(sent.sentAt).toBeInstanceOf(Date);
-    });
+      expect(sent.status).toBe(InvoiceStatus.PAID)
+      expect(sent.sentAt).toBeInstanceOf(Date)
+    })
 
     it('throws BadRequest when sending a cancelled invoice', async () => {
       const cid = String(
@@ -288,75 +287,75 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
             email: 'ada@example.com',
           })
         ).id,
-      );
-      const { orderId } = await makeOrder(100, cid);
-      const invoice = await invoices.create(businessA, { orderIds: [orderId] });
+      )
+      const { orderId } = await makeOrder(100, cid)
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
       await invoices.updateStatus(
         businessA,
         invoice.id,
         InvoiceStatus.CANCELLED,
-      );
+      )
 
       await expect(
         invoices.send(businessA, invoice.id, {}),
-      ).rejects.toBeInstanceOf(BadRequestException);
-      expect(sendInvoice).not.toHaveBeenCalled();
-    });
-  });
+      ).rejects.toBeInstanceOf(BadRequestException)
+      expect(sendInvoice).not.toHaveBeenCalled()
+    })
+  })
 
   describe('list / getById', () => {
     it('lists and filters by status', async () => {
-      const { orderId } = await makeOrder(100);
-      await invoices.create(businessA, { orderIds: [orderId] });
+      const { orderId } = await makeOrder(100)
+      await invoices.create(businessA, { orderIds: [orderId] })
 
-      const all = await invoices.list(businessA);
-      expect(all.data).toHaveLength(1);
-      expect(all.meta.total).toBe(1);
+      const all = await invoices.list(businessA)
+      expect(all.data).toHaveLength(1)
+      expect(all.meta.total).toBe(1)
 
       const paid = await invoices.list(businessA, {
         status: InvoiceStatus.PAID,
-      });
-      expect(paid.data).toHaveLength(0);
-      expect(paid.meta.total).toBe(0);
-    });
+      })
+      expect(paid.data).toHaveLength(0)
+      expect(paid.meta.total).toBe(0)
+    })
 
     it('paginates invoices (page/limit/totalPages)', async () => {
-      const { orderId: o1, customerId } = await makeOrder(100);
-      const { orderId: o2 } = await makeOrder(50, customerId);
-      const { orderId: o3 } = await makeOrder(25, customerId);
-      await invoices.create(businessA, { orderIds: [o1] });
-      await invoices.create(businessA, { orderIds: [o2] });
-      await invoices.create(businessA, { orderIds: [o3] });
+      const { orderId: o1, customerId } = await makeOrder(100)
+      const { orderId: o2 } = await makeOrder(50, customerId)
+      const { orderId: o3 } = await makeOrder(25, customerId)
+      await invoices.create(businessA, { orderIds: [o1] })
+      await invoices.create(businessA, { orderIds: [o2] })
+      await invoices.create(businessA, { orderIds: [o3] })
 
-      const page1 = await invoices.list(businessA, { page: 1, limit: 2 });
-      expect(page1.data).toHaveLength(2);
-      expect(page1.meta.total).toBe(3);
-      expect(page1.meta.page).toBe(1);
-      expect(page1.meta.limit).toBe(2);
-      expect(page1.meta.totalPages).toBe(2);
+      const page1 = await invoices.list(businessA, { page: 1, limit: 2 })
+      expect(page1.data).toHaveLength(2)
+      expect(page1.meta.total).toBe(3)
+      expect(page1.meta.page).toBe(1)
+      expect(page1.meta.limit).toBe(2)
+      expect(page1.meta.totalPages).toBe(2)
 
-      const page2 = await invoices.list(businessA, { page: 2, limit: 2 });
-      expect(page2.data).toHaveLength(1);
-      expect(page2.meta.page).toBe(2);
-    });
+      const page2 = await invoices.list(businessA, { page: 2, limit: 2 })
+      expect(page2.data).toHaveLength(1)
+      expect(page2.meta.page).toBe(2)
+    })
 
     it('searches invoices by q (customerName, case-insensitive)', async () => {
-      const { orderId } = await makeOrder(100); // customer named 'Ada'
-      await invoices.create(businessA, { orderIds: [orderId] });
+      const { orderId } = await makeOrder(100) // customer named 'Ada'
+      await invoices.create(businessA, { orderIds: [orderId] })
 
-      const match = await invoices.list(businessA, { q: 'ada' });
-      expect(match.data).toHaveLength(1);
-      expect(match.data[0].customerName).toBe('Ada');
+      const match = await invoices.list(businessA, { q: 'ada' })
+      expect(match.data).toHaveLength(1)
+      expect(match.data[0].customerName).toBe('Ada')
 
-      const miss = await invoices.list(businessA, { q: 'zzz-none' });
-      expect(miss.data).toHaveLength(0);
-      expect(miss.meta.total).toBe(0);
-    });
+      const miss = await invoices.list(businessA, { q: 'zzz-none' })
+      expect(miss.data).toHaveLength(0)
+      expect(miss.meta.total).toBe(0)
+    })
 
     it('throws NotFound for a missing invoice', async () => {
       await expect(
         invoices.getById(businessA, '64b000000000000000000000'),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
-  });
-});
+      ).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
+})

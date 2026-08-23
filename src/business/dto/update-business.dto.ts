@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 import {
   IsArray,
   IsEmail,
@@ -6,7 +6,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
-} from 'class-validator';
+} from 'class-validator'
 
 /**
  * Update a business. Every property is optional and updated individually — the
@@ -17,7 +17,7 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  name?: string;
+  name?: string
 
   @ApiProperty({
     required: false,
@@ -27,7 +27,7 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  categories?: string[];
+  categories?: string[]
 
   @ApiProperty({
     required: false,
@@ -35,12 +35,12 @@ export class UpdateBusinessDto {
   })
   @IsOptional()
   @IsString()
-  description?: string;
+  description?: string
 
   @ApiProperty({ required: false, example: 'Quality you can trust.' })
   @IsOptional()
   @IsString()
-  tagLine?: string;
+  tagLine?: string
 
   // Logo: send the fileUrl + fileKey returned by the file-storage presign step.
   @ApiProperty({
@@ -49,12 +49,12 @@ export class UpdateBusinessDto {
   })
   @IsOptional()
   @IsString()
-  logo?: string;
+  logo?: string
 
   @ApiProperty({ required: false, example: 'logos/acme.png' })
   @IsOptional()
   @IsString()
-  logoKey?: string;
+  logoKey?: string
 
   @ApiProperty({
     required: false,
@@ -63,47 +63,47 @@ export class UpdateBusinessDto {
   })
   @IsOptional()
   @IsEmail()
-  email?: string;
+  email?: string
 
   @ApiProperty({ required: false, example: '+1-555-123-4567' })
   @IsOptional()
   @IsString()
-  phone?: string;
+  phone?: string
 
   @ApiProperty({ required: false, example: 'https://acme.com' })
   @IsOptional()
   @IsString()
-  website?: string;
+  website?: string
 
   @ApiProperty({ required: false, example: '123 Market St' })
   @IsOptional()
   @IsString()
-  address?: string;
+  address?: string
 
   @ApiProperty({ required: false, example: 'San Francisco' })
   @IsOptional()
   @IsString()
-  city?: string;
+  city?: string
 
   @ApiProperty({ required: false, example: 'CA' })
   @IsOptional()
   @IsString()
-  state?: string;
+  state?: string
 
   @ApiProperty({ required: false, example: 'USA' })
   @IsOptional()
   @IsString()
-  country?: string;
+  country?: string
 
   @ApiProperty({ required: false, example: '12-3456789' })
   @IsOptional()
   @IsString()
-  taxId?: string;
+  taxId?: string
 
   @ApiProperty({ required: false, example: 'REG-2024-001' })
   @IsOptional()
   @IsString()
-  registrationNumber?: string;
+  registrationNumber?: string
 
   @ApiProperty({
     required: false,
@@ -115,7 +115,7 @@ export class UpdateBusinessDto {
   })
   @IsOptional()
   @IsObject()
-  businessHours?: Record<string, { open: string; close: string }>;
+  businessHours?: Record<string, { open: string; close: string }>
 
   @ApiProperty({
     required: false,
@@ -128,5 +128,5 @@ export class UpdateBusinessDto {
   })
   @IsOptional()
   @IsObject()
-  socials?: Record<string, string>;
+  socials?: Record<string, string>
 }

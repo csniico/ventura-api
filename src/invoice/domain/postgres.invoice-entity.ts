@@ -1,16 +1,16 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
-import { InvoiceStatus, InvoiceType, PaymentMethod } from './invoice.entity';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
+import { InvoiceStatus, InvoiceType, PaymentMethod } from './invoice.entity'
 
 /** Generate a unique invoice number: VEN-<yymmddHHMMSSmmm>-<rand>. */
 function generateInvoiceNumber(): string {
-  const now = new Date();
-  const p = (n: number, len = 2) => n.toString().padStart(len, '0');
+  const now = new Date()
+  const p = (n: number, len = 2) => n.toString().padStart(len, '0')
   const ts =
     `${now.getFullYear().toString().slice(-2)}${p(now.getMonth() + 1)}` +
     `${p(now.getDate())}${p(now.getHours())}${p(now.getMinutes())}` +
-    `${p(now.getSeconds())}${p(now.getMilliseconds(), 3)}`;
-  return `VEN-${ts}-${nanoid(6).toUpperCase()}`;
+    `${p(now.getSeconds())}${p(now.getMilliseconds(), 3)}`
+  return `VEN-${ts}-${nanoid(6).toUpperCase()}`
 }
 
 /**
@@ -63,6 +63,6 @@ export const PostgresInvoiceEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresInvoice = InferEntity<typeof PostgresInvoiceEntity>;
+export type PostgresInvoice = InferEntity<typeof PostgresInvoiceEntity>

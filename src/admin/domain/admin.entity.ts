@@ -4,10 +4,10 @@
  * unique across the table.
  */
 export interface IAdmin {
-  id: string;
-  shortId: string;
-  name: string;
-  email: string;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string
+  shortId: string
+  name: string
+  email: string
+  createdAt: Date
+  updatedAt: Date
 }

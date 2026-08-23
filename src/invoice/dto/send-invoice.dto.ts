@@ -1,12 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEmail, IsOptional, IsString } from 'class-validator'
 
 /** Send an invoice to the customer, optionally overriding the recipient. */
 export class SendInvoiceDto {
   @ApiProperty({ required: false, example: 'ada@example.com' })
   @IsOptional()
   @IsEmail()
-  email?: string;
+  email?: string
 
   @ApiProperty({
     required: false,
@@ -14,5 +14,5 @@ export class SendInvoiceDto {
   })
   @IsOptional()
   @IsString()
-  message?: string;
+  message?: string
 }

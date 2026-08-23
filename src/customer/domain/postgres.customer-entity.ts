@@ -1,5 +1,5 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { nanoid } from 'nanoid/non-secure';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
 
 /**
  * Postgres mapping for a customer (MikroORM v7 schema-first `defineEntity`).
@@ -32,6 +32,6 @@ export const PostgresCustomerEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresCustomer = InferEntity<typeof PostgresCustomerEntity>;
+export type PostgresCustomer = InferEntity<typeof PostgresCustomerEntity>

@@ -1,4 +1,4 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
 
 /**
  * Postgres mapping for a passwordless sign-in code (MikroORM v7 schema-first
@@ -26,8 +26,8 @@ export const PostgresVerificationCodeEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
 export type PostgresVerificationCode = InferEntity<
   typeof PostgresVerificationCodeEntity
->;
+>

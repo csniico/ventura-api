@@ -1,6 +1,6 @@
-import { defineEntity, InferEntity } from '@mikro-orm/core';
-import { UserRole } from './user.entity';
-import { nanoid } from 'nanoid/non-secure';
+import { defineEntity, InferEntity } from '@mikro-orm/core'
+import { nanoid } from 'nanoid/non-secure'
+import { UserRole } from './user.entity'
 
 /**
  * Postgres mapping for a user (MikroORM v7 schema-first `defineEntity`).
@@ -45,6 +45,6 @@ export const PostgresUserEntity = defineEntity({
       .onCreate(() => new Date())
       .onUpdate(() => new Date()),
   }),
-});
+})
 
-export type PostgresUser = InferEntity<typeof PostgresUserEntity>;
+export type PostgresUser = InferEntity<typeof PostgresUserEntity>

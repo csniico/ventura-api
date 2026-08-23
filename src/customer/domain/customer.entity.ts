@@ -4,13 +4,13 @@
  * scopes every read/write (shared-schema tenancy).
  */
 export interface ICustomer {
-  id: string;
-  shortId: string;
-  businessId: string;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-  notes?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string
+  shortId: string
+  businessId: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  notes?: string | null
+  createdAt: Date
+  updatedAt: Date
 }

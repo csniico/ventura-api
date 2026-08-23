@@ -3,37 +3,37 @@ import {
   Inject,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { OAuth2Client, type TokenPayload } from 'google-auth-library';
-import { createHash, randomInt, randomUUID } from 'crypto';
-import appleSignin from 'apple-signin-auth';
-import * as argon2 from 'argon2';
-import { UserServiceV2 } from '../user/application/user.service';
-import { IUser } from '../user/domain/user.entity';
-import { toUserResponse } from '../user/application/user.mapper';
-import { MailService } from '../mail/mail.service';
-import { VERIFICATION_CODE_DATA_SOURCE } from './domain/verification-code.repository';
-import type { VerificationCodeRepository } from './domain/verification-code.repository';
-import { AuthResult, AuthTokens, JwtPayload } from './types/auth.types';
+} from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { JwtService } from '@nestjs/jwt'
+import appleSignin from 'apple-signin-auth'
+import * as argon2 from 'argon2'
+import { createHash, randomInt, randomUUID } from 'crypto'
+import { OAuth2Client, type TokenPayload } from 'google-auth-library'
+import { MailService } from '../mail/mail.service'
+import { toUserResponse } from '../user/application/user.mapper'
+import { UserServiceV2 } from '../user/application/user.service'
+import { IUser } from '../user/domain/user.entity'
+import type { VerificationCodeRepository } from './domain/verification-code.repository'
+import { VERIFICATION_CODE_DATA_SOURCE } from './domain/verification-code.repository'
+import { AuthResult, AuthTokens, JwtPayload } from './types/auth.types'
 
-const CODE_TTL_MINUTES = 10;
+const CODE_TTL_MINUTES = 10
 
 // The `ms`-style duration string @nestjs/jwt expects for expiresIn.
 type ExpiresIn =
   | number
   | `${number}`
-  | `${number}${'d' | 'h' | 'm' | 's' | 'ms' | 'y' | 'w'}`;
+  | `${number}${'d' | 'h' | 'm' | 's' | 'ms' | 'y' | 'w'}`
 
 @Injectable()
 export class AuthService {
-  private readonly googleClientId: string;
-  private readonly googleClient: OAuth2Client;
+  private readonly googleClientId: string
+  private readonly googleClient: OAuth2Client
 
   // Apple identity tokens carry the iOS bundle id (native flow) OR the Services
   // id (web/Android flow) as `aud`; we accept either.
-  private readonly appleAudiences: string[];
+  private readonly appleAudiences: string[]
 
   constructor(
     private readonly jwtService: JwtService,
@@ -43,16 +43,13 @@ export class AuthService {
     @Inject(VERIFICATION_CODE_DATA_SOURCE)
     private readonly codeRepository: VerificationCodeRepository,
   ) {
-    this.googleClientId = this.configService.get<string>(
-      'GOOGLE_CLIENT_ID',
-      '',
-    );
-    this.googleClient = new OAuth2Client(this.googleClientId);
+    this.googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID', '')
+    this.googleClient = new OAuth2Client(this.googleClientId)
 
     this.appleAudiences = [
       this.configService.get<string>('APPLE_CLIENT_ID', ''),
       this.configService.get<string>('APPLE_SERVICE_ID', ''),
-    ].filter((a): a is string => !!a);
+    ].filter((a): a is string => !!a)
   }
 
   /**
@@ -60,12 +57,12 @@ export class AuthService {
    * argon2-hashed refresh token so it can be verified and revoked later.
    */
   async issueTokens(userId: string): Promise<AuthTokens> {
-    const payload = { sub: userId } satisfies JwtPayload;
+    const payload = { sub: userId } satisfies JwtPayload
 
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: this.configService.get<ExpiresIn>('JWT_EXPIRES_IN', '15m'),
-    });
+    })
 
     // A unique jti makes every refresh token distinct, so rotation truly
     // invalidates the previous one (two issued in the same second still differ).
@@ -78,18 +75,18 @@ export class AuthService {
           '7d',
         ),
       },
-    );
+    )
 
-    const hashedRefreshToken = await argon2.hash(refreshToken);
-    await this.userService.setRefreshToken(userId, hashedRefreshToken);
+    const hashedRefreshToken = await argon2.hash(refreshToken)
+    await this.userService.setRefreshToken(userId, hashedRefreshToken)
 
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken }
   }
 
   /** Build the standard auth response: tokens + the user (secrets stripped). */
   private async buildAuthResult(user: IUser): Promise<AuthResult> {
-    const tokens = await this.issueTokens(user.id);
-    return { ...tokens, user: toUserResponse(user) };
+    const tokens = await this.issueTokens(user.id)
+    return { ...tokens, user: toUserResponse(user) }
   }
 
   /**
@@ -100,26 +97,26 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<AuthResult> {
-    const user = await this.userService.verifyCredentials(email, password);
+    const user = await this.userService.verifyCredentials(email, password)
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials.');
+      throw new UnauthorizedException('Invalid credentials.')
     }
     // A returning deleted user within the 90-day window is reactivated before
     // tokens are issued; past the window this throws Forbidden and sign-in fails.
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
       user.id,
-    );
+    )
     if (reactivated) {
-      user.deleted = false;
-      user.deletedAt = null;
+      user.deleted = false
+      user.deletedAt = null
     }
-    return this.buildAuthResult(user);
+    return this.buildAuthResult(user)
   }
 
   /** Generate a 6-digit numeric code (zero-padded). */
   private generateCode(): string {
     // CSPRNG — sign-in codes must not be predictable from observed values.
-    return randomInt(100000, 1000000).toString();
+    return randomInt(100000, 1000000).toString()
   }
 
   /**
@@ -129,18 +126,18 @@ export class AuthService {
    */
   async requestEmailCode(email: string): Promise<{ message: string }> {
     // Ensure the account exists (passwordless sign-in doubles as sign-up).
-    await this.userService.findOrCreateByEmail(email);
+    await this.userService.findOrCreateByEmail(email)
 
-    const code = this.generateCode();
-    const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
+    const code = this.generateCode()
+    const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000)
 
     // One active code per email: replace any existing one.
-    await this.codeRepository.deleteByEmail(email);
-    await this.codeRepository.create({ email, code, expiresAt });
+    await this.codeRepository.deleteByEmail(email)
+    await this.codeRepository.create({ email, code, expiresAt })
 
-    await this.mailService.sendVerificationCode(email, code, CODE_TTL_MINUTES);
+    await this.mailService.sendVerificationCode(email, code, CODE_TTL_MINUTES)
 
-    return { message: 'If the email is valid, a verification code was sent.' };
+    return { message: 'If the email is valid, a verification code was sent.' }
   }
 
   /**
@@ -149,40 +146,40 @@ export class AuthService {
    * Throws 400 if the code is missing, expired, or wrong.
    */
   async verifyEmailCode(email: string, code: string): Promise<AuthResult> {
-    const record = await this.codeRepository.findByEmailAndCode(email, code);
+    const record = await this.codeRepository.findByEmailAndCode(email, code)
 
     if (!record || record.expiresAt.getTime() < Date.now()) {
-      throw new BadRequestException('Invalid or expired code.');
+      throw new BadRequestException('Invalid or expired code.')
     }
 
-    const user = await this.userService.findByEmail(email);
+    const user = await this.userService.findByEmail(email)
     if (!user) {
       // Shouldn't happen (requestEmailCode creates the user), but guard anyway.
-      throw new BadRequestException('Invalid or expired code.');
+      throw new BadRequestException('Invalid or expired code.')
     }
 
     // Reactivate a returning deleted user within the window before issuing
     // tokens; past the window this throws Forbidden and sign-in fails.
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
       user.id,
-    );
+    )
     if (reactivated) {
-      user.deleted = false;
-      user.deletedAt = null;
+      user.deleted = false
+      user.deletedAt = null
     }
 
-    const firstVerification = !user.isEmailVerified;
-    await this.userService.markEmailVerified(user.id);
-    user.isEmailVerified = true;
+    const firstVerification = !user.isEmailVerified
+    await this.userService.markEmailVerified(user.id)
+    user.isEmailVerified = true
 
     // Code is single-use.
-    await this.codeRepository.deleteByEmail(email);
+    await this.codeRepository.deleteByEmail(email)
 
     if (firstVerification) {
-      await this.mailService.sendWelcome(email, user.firstName);
+      await this.mailService.sendWelcome(email, user.firstName)
     }
 
-    return this.buildAuthResult(user);
+    return this.buildAuthResult(user)
   }
 
   /**
@@ -191,22 +188,22 @@ export class AuthService {
    * and issues tokens. Throws 401 if the token is invalid.
    */
   async signInWithGoogle(idToken: string): Promise<AuthResult> {
-    let payload: TokenPayload | undefined;
+    let payload: TokenPayload | undefined
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
         audience: this.googleClientId,
-      });
-      payload = ticket.getPayload();
+      })
+      payload = ticket.getPayload()
     } catch {
-      throw new UnauthorizedException('Invalid Google token.');
+      throw new UnauthorizedException('Invalid Google token.')
     }
 
     if (!payload?.email || !payload.sub) {
-      throw new UnauthorizedException('Invalid Google token.');
+      throw new UnauthorizedException('Invalid Google token.')
     }
 
-    const isNew = !(await this.userService.findByEmail(payload.email));
+    const isNew = !(await this.userService.findByEmail(payload.email))
 
     // createWithGoogle returns the existing user on a duplicate email, so this
     // is safe for both sign-up and sign-in.
@@ -217,23 +214,23 @@ export class AuthService {
         payload.given_name ?? payload.name ?? payload.email.split('@')[0],
       lastName: payload.family_name,
       avatarUrl: payload.picture,
-    });
+    })
 
     // Reactivate a returning deleted user (matched by email) within the window
     // before issuing tokens; past the window this throws Forbidden.
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
       user.id,
-    );
+    )
     if (reactivated) {
-      user.deleted = false;
-      user.deletedAt = null;
+      user.deleted = false
+      user.deletedAt = null
     }
 
     if (isNew) {
-      await this.mailService.sendWelcome(payload.email, user.firstName);
+      await this.mailService.sendWelcome(payload.email, user.firstName)
     }
 
-    return this.buildAuthResult(user);
+    return this.buildAuthResult(user)
   }
 
   /**
@@ -244,17 +241,17 @@ export class AuthService {
    * token's `nonce`. Finds-or-creates the user keyed on the Apple `sub`.
    */
   async signInWithApple(params: {
-    identityToken: string;
-    rawNonce?: string;
-    firstName?: string;
-    lastName?: string;
+    identityToken: string
+    rawNonce?: string
+    firstName?: string
+    lastName?: string
   }): Promise<AuthResult> {
     if (this.appleAudiences.length === 0) {
-      throw new UnauthorizedException('Apple sign-in is not configured.');
+      throw new UnauthorizedException('Apple sign-in is not configured.')
     }
 
-    let appleId: string;
-    let email: string;
+    let appleId: string
+    let email: string
     try {
       const payload = await appleSignin.verifyIdToken(params.identityToken, {
         audience: this.appleAudiences,
@@ -262,46 +259,46 @@ export class AuthService {
         nonce: params.rawNonce
           ? createHash('sha256').update(params.rawNonce).digest('hex')
           : undefined,
-      });
+      })
       if (!payload?.sub) {
-        throw new UnauthorizedException('Invalid Apple identity token.');
+        throw new UnauthorizedException('Invalid Apple identity token.')
       }
-      appleId = payload.sub;
-      email = payload.email ?? '';
+      appleId = payload.sub
+      email = payload.email ?? ''
     } catch (error) {
-      if (error instanceof UnauthorizedException) throw error;
-      throw new UnauthorizedException('Invalid Apple identity token.');
+      if (error instanceof UnauthorizedException) throw error
+      throw new UnauthorizedException('Invalid Apple identity token.')
     }
 
-    const existing = await this.userService.findByAppleId(appleId);
+    const existing = await this.userService.findByAppleId(appleId)
     if (!existing && !email) {
       // No prior account and Apple withheld the email — can't create one.
       throw new UnauthorizedException(
         'Apple did not provide an email; cannot create an account.',
-      );
+      )
     }
-    const isNew = !existing;
+    const isNew = !existing
 
     const user = await this.userService.createWithApple({
       appleId,
       email,
       firstName: params.firstName,
       lastName: params.lastName,
-    });
+    })
 
     const { reactivated } = await this.userService.reactivateIfWithinWindow(
       user.id,
-    );
+    )
     if (reactivated) {
-      user.deleted = false;
-      user.deletedAt = null;
+      user.deleted = false
+      user.deletedAt = null
     }
 
     if (isNew && user.email) {
-      await this.mailService.sendWelcome(user.email, user.firstName);
+      await this.mailService.sendWelcome(user.email, user.firstName)
     }
 
-    return this.buildAuthResult(user);
+    return this.buildAuthResult(user)
   }
 
   /**
@@ -313,11 +310,11 @@ export class AuthService {
     userId: string,
     refreshToken: string,
   ): Promise<boolean> {
-    const hashed = await this.userService.getHashedRefreshToken(userId);
+    const hashed = await this.userService.getHashedRefreshToken(userId)
     if (!hashed) {
-      return false;
+      return false
     }
-    return argon2.verify(hashed, refreshToken).catch(() => false);
+    return argon2.verify(hashed, refreshToken).catch(() => false)
   }
 
   /**
@@ -325,11 +322,11 @@ export class AuthService {
    * stored refresh hash). Called after the refresh token is validated.
    */
   async refreshTokens(userId: string): Promise<AuthTokens> {
-    return this.issueTokens(userId);
+    return await this.issueTokens(userId)
   }
 
   /** Log out: clear the stored refresh token so it can no longer be used. */
   async logout(userId: string): Promise<void> {
-    await this.userService.clearRefreshToken(userId);
+    await this.userService.clearRefreshToken(userId)
   }
 }

@@ -1,12 +1,12 @@
-import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { UserModule } from '../user/user.module';
-import { FileStorageModule } from '../file-storage/file-storage.module';
-import { ResourceService } from './application/resource.service';
-import { ResourceController } from './application/resource.controller';
-import { PostgresResourceEntity } from './domain/postgres.resource-entity';
-import { RESOURCE_DATA_SOURCE } from './domain/resource.repository';
-import { PostgresResourceRepository } from './infrastructure/postgres-resource.repository';
+import { MikroOrmModule } from '@mikro-orm/nestjs'
+import { Module } from '@nestjs/common'
+import { FileStorageModule } from '../file-storage/file-storage.module'
+import { UserModule } from '../user/user.module'
+import { ResourceController } from './application/resource.controller'
+import { ResourceService } from './application/resource.service'
+import { PostgresResourceEntity } from './domain/postgres.resource-entity'
+import { RESOURCE_DATA_SOURCE } from './domain/resource.repository'
+import { PostgresResourceRepository } from './infrastructure/postgres-resource.repository'
 
 @Module({
   imports: [

@@ -1,20 +1,20 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/postgresql';
-import type { FilterQuery } from '@mikro-orm/core';
-import { IAppointment, Recurrence } from '../domain/appointment.entity';
+import type { FilterQuery } from '@mikro-orm/core'
+import { EntityManager } from '@mikro-orm/postgresql'
+import { Injectable } from '@nestjs/common'
+import { IAppointment, Recurrence } from '../domain/appointment.entity'
 import {
   AppointmentRepository,
   ICreateAppointment,
   IUpdateAppointment,
-} from '../domain/appointment.repository';
+} from '../domain/appointment.repository'
 import {
   PostgresAppointment,
   PostgresAppointmentEntity,
-} from '../domain/postgres.appointment-entity';
+} from '../domain/postgres.appointment-entity'
 
 /** Escape LIKE/ILIKE wildcards so a raw search term matches literally. */
 function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`)
 }
 
 @Injectable()
@@ -25,12 +25,12 @@ export class PostgresAppointmentRepository implements AppointmentRepository {
   private toRecurrence(
     recurrence: Recurrence | null | undefined,
   ): Recurrence | null {
-    if (!recurrence) return null;
+    if (!recurrence) return null
     return {
       frequency: recurrence.frequency,
       interval: recurrence.interval,
       until: recurrence.until ? new Date(recurrence.until) : null,
-    };
+    }
   }
 
   private toDomain(entity: PostgresAppointment): IAppointment {
@@ -49,21 +49,21 @@ export class PostgresAppointmentRepository implements AppointmentRepository {
       status: entity.status,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-    };
+    }
   }
 
   async create(data: ICreateAppointment): Promise<IAppointment> {
-    const appointment = this.em.create(PostgresAppointmentEntity, data);
-    await this.em.flush();
-    return this.toDomain(appointment);
+    const appointment = this.em.create(PostgresAppointmentEntity, data)
+    await this.em.flush()
+    return this.toDomain(appointment)
   }
 
   async findById(businessId: string, id: string): Promise<IAppointment | null> {
     const appointment = await this.em.findOne(PostgresAppointmentEntity, {
       id,
       businessId,
-    });
-    return appointment ? this.toDomain(appointment) : null;
+    })
+    return appointment ? this.toDomain(appointment) : null
   }
 
   async list(
@@ -71,16 +71,16 @@ export class PostgresAppointmentRepository implements AppointmentRepository {
     from?: Date,
     to?: Date,
   ): Promise<IAppointment[]> {
-    const where: FilterQuery<PostgresAppointment> = { businessId };
+    const where: FilterQuery<PostgresAppointment> = { businessId }
     if (from || to) {
-      where.start = {};
-      if (from) where.start.$gte = from;
-      if (to) where.start.$lte = to;
+      where.start = {}
+      if (from) where.start.$gte = from
+      if (to) where.start.$lte = to
     }
     const rows = await this.em.find(PostgresAppointmentEntity, where, {
       orderBy: { start: 'ASC' },
-    });
-    return rows.map((a) => this.toDomain(a));
+    })
+    return rows.map((a) => this.toDomain(a))
   }
 
   async search(
@@ -92,8 +92,8 @@ export class PostgresAppointmentRepository implements AppointmentRepository {
       PostgresAppointmentEntity,
       { businessId, title: { $ilike: `%${escapeLike(q)}%` } },
       { orderBy: { start: 'ASC' }, limit },
-    );
-    return rows.map((a) => this.toDomain(a));
+    )
+    return rows.map((a) => this.toDomain(a))
   }
 
   async update(
@@ -104,29 +104,29 @@ export class PostgresAppointmentRepository implements AppointmentRepository {
     const appointment = await this.em.findOne(PostgresAppointmentEntity, {
       id,
       businessId,
-    });
+    })
     if (!appointment) {
-      return null;
+      return null
     }
     // Drop undefined keys (present-only writes); an explicit null clears.
     const clean = Object.fromEntries(
       Object.entries(patch).filter(([, v]) => v !== undefined),
-    );
-    this.em.assign(appointment, clean);
-    await this.em.flush();
-    return this.toDomain(appointment);
+    )
+    this.em.assign(appointment, clean)
+    await this.em.flush()
+    return this.toDomain(appointment)
   }
 
   async delete(businessId: string, id: string): Promise<IAppointment | null> {
     const appointment = await this.em.findOne(PostgresAppointmentEntity, {
       id,
       businessId,
-    });
+    })
     if (!appointment) {
-      return null;
+      return null
     }
-    const removed = this.toDomain(appointment);
-    await this.em.nativeDelete(PostgresAppointmentEntity, { id, businessId });
-    return removed;
+    const removed = this.toDomain(appointment)
+    await this.em.nativeDelete(PostgresAppointmentEntity, { id, businessId })
+    return removed
   }
 }

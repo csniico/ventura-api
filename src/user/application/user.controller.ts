@@ -12,43 +12,43 @@ import {
   Put,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from '@nestjs/common'
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { UserServiceV2 } from './user.service';
+} from '@nestjs/swagger'
+import { Throttle } from '@nestjs/throttler'
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
+import { AuthUser } from '../../auth/types/auth.types'
+import {
+  ConfirmEmailChangeDto,
+  RequestEmailChangeDto,
+} from '../dto/change-email.dto'
 import {
   CreateUserWithEmailDto,
   CreateUserWithGoogleDto,
-} from '../dto/create-user.dto';
-import { LinkGoogleAccountDto } from '../dto/link-google-account.dto';
-import { CreatePasswordDto, UpdatePasswordDto } from '../dto/password.dto';
-import { UpdateProfileDto } from '../dto/update-profile.dto';
+} from '../dto/create-user.dto'
+import { LinkGoogleAccountDto } from '../dto/link-google-account.dto'
+import { CreatePasswordDto, UpdatePasswordDto } from '../dto/password.dto'
 import {
   SetBusinessIdDto,
   UpdateAvatarDto,
   UpdateFirstNameDto,
   UpdateLastNameDto,
-} from '../dto/update-field.dto';
-import {
-  ConfirmEmailChangeDto,
-  RequestEmailChangeDto,
-} from '../dto/change-email.dto';
+} from '../dto/update-field.dto'
+import { UpdateProfileDto } from '../dto/update-profile.dto'
 import {
   HasPasswordResponse,
   MessageResponse,
   UserResponse,
-} from '../responses/user.response';
-import { Throttle } from '@nestjs/throttler';
-import { toUserResponse } from './user.mapper';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../../auth/types/auth.types';
+} from '../responses/user.response'
+import { toUserResponse } from './user.mapper'
+import { UserServiceV2 } from './user.service'
 
 interface AuthedRequest {
-  user: AuthUser;
+  user: AuthUser
 }
 
 /**
@@ -73,7 +73,7 @@ export class UserControllerV2 {
    */
   private assertSelf(req: AuthedRequest, targetId: string): void {
     if (req.user.userId !== targetId) {
-      throw new ForbiddenException('You can only act on your own account.');
+      throw new ForbiddenException('You can only act on your own account.')
     }
   }
 
@@ -83,14 +83,14 @@ export class UserControllerV2 {
   @ApiResponse({ status: 201, type: UserResponse })
   @Post('/email')
   async createWithEmail(@Body() dto: CreateUserWithEmailDto) {
-    return toUserResponse(await this.userService.createWithEmail(dto));
+    return toUserResponse(await this.userService.createWithEmail(dto))
   }
 
   @ApiOperation({ summary: 'Sign up / continue with Google' })
   @ApiResponse({ status: 201, type: UserResponse })
   @Post('/google')
   async createWithGoogle(@Body() dto: CreateUserWithGoogleDto) {
-    return toUserResponse(await this.userService.createWithGoogle(dto));
+    return toUserResponse(await this.userService.createWithGoogle(dto))
   }
 
   // --- Google account linking (public — part of the OAuth sign-in flow) ---
@@ -100,7 +100,7 @@ export class UserControllerV2 {
   @HttpCode(HttpStatus.OK)
   @Post('/link-google')
   async linkGoogleAccount(@Body() dto: LinkGoogleAccountDto) {
-    return toUserResponse(await this.userService.linkGoogleAccount(dto));
+    return toUserResponse(await this.userService.linkGoogleAccount(dto))
   }
 
   // --- Password ---
@@ -114,8 +114,8 @@ export class UserControllerV2 {
     @Req() req: AuthedRequest,
     @Body() dto: CreatePasswordDto,
   ) {
-    this.assertSelf(req, dto.userId);
-    return toUserResponse(await this.userService.createPassword(dto));
+    this.assertSelf(req, dto.userId)
+    return toUserResponse(await this.userService.createPassword(dto))
   }
 
   @ApiOperation({ summary: 'Change an existing password' })
@@ -128,8 +128,8 @@ export class UserControllerV2 {
     @Req() req: AuthedRequest,
     @Body() dto: UpdatePasswordDto,
   ) {
-    this.assertSelf(req, dto.userId);
-    return toUserResponse(await this.userService.updatePassword(dto));
+    this.assertSelf(req, dto.userId)
+    return toUserResponse(await this.userService.updatePassword(dto))
   }
 
   // --- Read ---
@@ -140,7 +140,7 @@ export class UserControllerV2 {
   async hasPassword(@Param('id') id: string) {
     // Public: the sign-in UI calls this before the user is authenticated to
     // decide whether to prompt for a password.
-    return { hasPassword: await this.userService.hasPassword(id) };
+    return { hasPassword: await this.userService.hasPassword(id) }
   }
 
   @ApiOperation({ summary: 'Get a user by id' })
@@ -149,8 +149,8 @@ export class UserControllerV2 {
   @UseGuards(JwtAuthGuard)
   @Get('/:id')
   async getUserById(@Req() req: AuthedRequest, @Param('id') id: string) {
-    this.assertSelf(req, id);
-    return toUserResponse(await this.userService.getUserById(id));
+    this.assertSelf(req, id)
+    return toUserResponse(await this.userService.getUserById(id))
   }
 
   // --- Profile updates ---
@@ -166,8 +166,8 @@ export class UserControllerV2 {
     @Param('id') id: string,
     @Body() dto: UpdateProfileDto,
   ) {
-    this.assertSelf(req, id);
-    return toUserResponse(await this.userService.updateProfile(id, dto));
+    this.assertSelf(req, id)
+    return toUserResponse(await this.userService.updateProfile(id, dto))
   }
 
   @ApiOperation({ summary: 'Update first name' })
@@ -181,10 +181,10 @@ export class UserControllerV2 {
     @Param('id') id: string,
     @Body() dto: UpdateFirstNameDto,
   ) {
-    this.assertSelf(req, id);
+    this.assertSelf(req, id)
     return toUserResponse(
       await this.userService.updateFirstName(id, dto.firstName),
-    );
+    )
   }
 
   @ApiOperation({ summary: 'Update last name (null to clear)' })
@@ -198,10 +198,10 @@ export class UserControllerV2 {
     @Param('id') id: string,
     @Body() dto: UpdateLastNameDto,
   ) {
-    this.assertSelf(req, id);
+    this.assertSelf(req, id)
     return toUserResponse(
       await this.userService.updateLastName(id, dto.lastName),
-    );
+    )
   }
 
   @ApiOperation({
@@ -219,8 +219,8 @@ export class UserControllerV2 {
     @Param('id') id: string,
     @Body() dto: RequestEmailChangeDto,
   ) {
-    this.assertSelf(req, id);
-    return this.userService.requestEmailChange(id, dto.newEmail);
+    this.assertSelf(req, id)
+    return await this.userService.requestEmailChange(id, dto.newEmail)
   }
 
   @ApiOperation({ summary: 'Confirm an email change with the emailed code' })
@@ -236,10 +236,10 @@ export class UserControllerV2 {
     @Param('id') id: string,
     @Body() dto: ConfirmEmailChangeDto,
   ) {
-    this.assertSelf(req, id);
+    this.assertSelf(req, id)
     return toUserResponse(
       await this.userService.confirmEmailChange(id, dto.code),
-    );
+    )
   }
 
   @ApiOperation({ summary: 'Update avatar (url + key from file upload)' })
@@ -253,10 +253,10 @@ export class UserControllerV2 {
     @Param('id') id: string,
     @Body() dto: UpdateAvatarDto,
   ) {
-    this.assertSelf(req, id);
+    this.assertSelf(req, id)
     return toUserResponse(
       await this.userService.updateAvatar(id, dto.avatarUrl, dto.avatarKey),
-    );
+    )
   }
 
   // --- Business ---
@@ -272,10 +272,10 @@ export class UserControllerV2 {
     @Param('id') id: string,
     @Body() dto: SetBusinessIdDto,
   ) {
-    this.assertSelf(req, id);
+    this.assertSelf(req, id)
     return toUserResponse(
       await this.userService.setBusinessId(id, dto.businessId),
-    );
+    )
   }
 
   // --- Account deletion / restore (soft) ---
@@ -287,7 +287,7 @@ export class UserControllerV2 {
   @HttpCode(HttpStatus.OK)
   @Delete('/:id')
   async deleteAccount(@Req() req: AuthedRequest, @Param('id') id: string) {
-    this.assertSelf(req, id);
-    return toUserResponse(await this.userService.deleteAccount(id));
+    this.assertSelf(req, id)
+    return toUserResponse(await this.userService.deleteAccount(id))
   }
 }

@@ -7,15 +7,12 @@ import {
   Param,
   Patch,
   Post,
-} from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AdminProfileService } from '../application/admin-profile.service';
-import { toAdminResponse } from '../application/admin.mapper';
-import {
-  CreateAdminDto,
-  UpdateAdminProfileDto,
-} from '../dto/admin-profile.dto';
-import { AdminResponse } from '../responses/admin.response';
+} from '@nestjs/common'
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { toAdminResponse } from '../application/admin.mapper'
+import { AdminProfileService } from '../application/admin-profile.service'
+import { CreateAdminDto, UpdateAdminProfileDto } from '../dto/admin-profile.dto'
+import { AdminResponse } from '../responses/admin.response'
 
 @ApiTags('Admin')
 @Controller('admin/profile')
@@ -29,14 +26,14 @@ export class AdminProfileController {
   @HttpCode(HttpStatus.OK)
   @Post()
   async create(@Body() dto: CreateAdminDto) {
-    return toAdminResponse(await this.adminProfileService.create(dto));
+    return toAdminResponse(await this.adminProfileService.create(dto))
   }
 
   @ApiOperation({ summary: 'Get an admin profile by id' })
   @ApiResponse({ status: 200, type: AdminResponse })
   @Get('/:id')
   async getById(@Param('id') id: string) {
-    return toAdminResponse(await this.adminProfileService.getById(id));
+    return toAdminResponse(await this.adminProfileService.getById(id))
   }
 
   @ApiOperation({ summary: 'Update an admin profile' })
@@ -49,6 +46,6 @@ export class AdminProfileController {
   ) {
     return toAdminResponse(
       await this.adminProfileService.updateProfile(id, dto),
-    );
+    )
   }
 }

@@ -5,22 +5,22 @@ import {
   Query,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from '@nestjs/common'
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiQuery,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { SearchService } from './search.service';
-import { UserServiceV2 } from '../user/application/user.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../auth/types/auth.types';
-import { SearchResultsResponse } from './responses/search.response';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { AuthUser } from '../auth/types/auth.types'
+import { UserServiceV2 } from '../user/application/user.service'
+import { SearchResultsResponse } from './responses/search.response'
+import { SearchService } from './search.service'
 
 interface AuthedRequest {
-  user: AuthUser;
+  user: AuthUser
 }
 
 @ApiTags('Search')
@@ -34,13 +34,13 @@ export class SearchController {
   ) {}
 
   private async resolveBusinessId(req: AuthedRequest): Promise<string> {
-    const user = await this.userService.getUserById(req.user.userId);
+    const user = await this.userService.getUserById(req.user.userId)
     if (!user.businessId) {
       throw new ForbiddenException(
         'You must create a business before searching.',
-      );
+      )
     }
-    return user.businessId;
+    return user.businessId
   }
 
   /** Cross-entity search across the caller's customers, resources, orders, invoices. */
@@ -49,7 +49,7 @@ export class SearchController {
   @ApiResponse({ status: 200, type: SearchResultsResponse })
   @Get()
   async search(@Req() req: AuthedRequest, @Query('q') q?: string) {
-    const businessId = await this.resolveBusinessId(req);
-    return this.searchService.search(businessId, q ?? '');
+    const businessId = await this.resolveBusinessId(req)
+    return this.searchService.search(businessId, q ?? '')
   }
 }

@@ -1,6 +1,6 @@
-import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsBoolean, IsOptional } from 'class-validator';
-import { CreateAppointmentDto } from './create-appointment.dto';
+import { ApiProperty, PartialType } from '@nestjs/swagger'
+import { IsBoolean, IsOptional } from 'class-validator'
+import { CreateAppointmentDto } from './create-appointment.dto'
 
 /**
  * Update an appointment. All fields optional. Set `clearRecurrence: true` to
@@ -10,5 +10,5 @@ export class UpdateAppointmentDto extends PartialType(CreateAppointmentDto) {
   @ApiProperty({ required: false, example: true })
   @IsOptional()
   @IsBoolean()
-  clearRecurrence?: boolean;
+  clearRecurrence?: boolean
 }

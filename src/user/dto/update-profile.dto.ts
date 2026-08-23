@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, ValidateIf } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsOptional, IsString, ValidateIf } from 'class-validator'
 
 /**
  * Bulk profile update. All fields are optional; only the ones provided are
@@ -9,18 +9,18 @@ export class UpdateProfileDto {
   @ApiProperty({ required: false, example: 'Ada' })
   @IsOptional()
   @IsString()
-  firstName?: string;
+  firstName?: string
 
   // Allow a string or null (null clears the field).
   @ApiProperty({ required: false, nullable: true, example: 'Lovelace' })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsString()
-  lastName?: string | null;
+  lastName?: string | null
 
   @ApiProperty({ required: false, nullable: true })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsString()
-  avatarUrl?: string | null;
+  avatarUrl?: string | null
 }

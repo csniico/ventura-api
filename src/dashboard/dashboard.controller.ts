@@ -5,26 +5,26 @@ import {
   Query,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from '@nestjs/common'
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiQuery,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { DashboardService } from './dashboard.service';
-import { UserServiceV2 } from '../user/application/user.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../auth/types/auth.types';
-import { DashboardSummaryResponse } from './responses/dashboard.response';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { AuthUser } from '../auth/types/auth.types'
+import { UserServiceV2 } from '../user/application/user.service'
+import { DashboardService } from './dashboard.service'
+import { DashboardSummaryResponse } from './responses/dashboard.response'
 
 interface AuthedRequest {
-  user: AuthUser;
+  user: AuthUser
 }
 
 /** Accepted `range` values mapped to a number of days. */
-const RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
+const RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 }
 
 @ApiTags('Dashboard')
 @ApiBearerAuth('bearer')
@@ -37,13 +37,13 @@ export class DashboardController {
   ) {}
 
   private async resolveBusinessId(req: AuthedRequest): Promise<string> {
-    const user = await this.userService.getUserById(req.user.userId);
+    const user = await this.userService.getUserById(req.user.userId)
     if (!user.businessId) {
       throw new ForbiddenException(
         'You must create a business before viewing the dashboard.',
-      );
+      )
     }
-    return user.businessId;
+    return user.businessId
   }
 
   /**
@@ -61,8 +61,8 @@ export class DashboardController {
   @ApiResponse({ status: 200, type: DashboardSummaryResponse })
   @Get('/summary')
   async getSummary(@Req() req: AuthedRequest, @Query('range') range?: string) {
-    const businessId = await this.resolveBusinessId(req);
-    const rangeDays = RANGE_DAYS[range ?? ''] ?? 30;
-    return this.dashboardService.getSummary(businessId, rangeDays);
+    const businessId = await this.resolveBusinessId(req)
+    const rangeDays = RANGE_DAYS[range ?? ''] ?? 30
+    return this.dashboardService.getSummary(businessId, rangeDays)
   }
 }

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 import {
   ArrayMinSize,
   IsArray,
@@ -6,8 +6,8 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-} from 'class-validator';
-import { InvoiceType } from '../domain/invoice.entity';
+} from 'class-validator'
+import { InvoiceType } from '../domain/invoice.entity'
 
 /** Create an invoice from one or more existing orders. */
 export class CreateInvoiceDto {
@@ -15,20 +15,20 @@ export class CreateInvoiceDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
-  orderIds!: string[];
+  orderIds!: string[]
 
   @ApiProperty({ required: false, enum: InvoiceType })
   @IsOptional()
   @IsEnum(InvoiceType)
-  invoiceType?: InvoiceType;
+  invoiceType?: InvoiceType
 
   @ApiProperty({ required: false, example: '2026-07-01T00:00:00.000Z' })
   @IsOptional()
   @IsDateString()
-  dueDate?: string;
+  dueDate?: string
 
   @ApiProperty({ required: false, example: 'Payment due within 14 days.' })
   @IsOptional()
   @IsString()
-  notes?: string;
+  notes?: string
 }

@@ -1,17 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator'
 
 /** Create an admin. If the email already exists, the existing admin is returned. */
 export class CreateAdminDto {
   @ApiProperty({ example: 'Ada Lovelace' })
   @IsString()
   @IsNotEmpty()
-  name!: string;
+  name!: string
 
   @ApiProperty({ example: 'ada@example.com', format: 'email' })
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 }
 
 /** Update an admin's profile. Only the provided fields are changed. */
@@ -20,5 +20,5 @@ export class UpdateAdminProfileDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  name?: string;
+  name?: string
 }

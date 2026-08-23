@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
 import {
   IsArray,
   IsEnum,
@@ -9,8 +9,8 @@ import {
   IsOptional,
   IsString,
   Min,
-} from 'class-validator';
-import { ResourceType } from '../domain/resource.entity';
+} from 'class-validator'
+import { ResourceType } from '../domain/resource.entity'
 
 /**
  * Create a sellable resource. `type`, `name`, and `price` are required.
@@ -20,17 +20,17 @@ import { ResourceType } from '../domain/resource.entity';
 export class CreateResourceDto {
   @ApiProperty({ enum: ResourceType, example: ResourceType.PRODUCT })
   @IsEnum(ResourceType)
-  type!: ResourceType;
+  type!: ResourceType
 
   @ApiProperty({ example: 'Espresso Beans 1kg' })
   @IsString()
   @IsNotEmpty()
-  name!: string;
+  name!: string
 
   @ApiProperty({ example: 9.99 })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  price!: number;
+  price!: number
 
   @ApiProperty({
     required: false,
@@ -38,7 +38,7 @@ export class CreateResourceDto {
   })
   @IsOptional()
   @IsString()
-  primaryImage?: string;
+  primaryImage?: string
 
   @ApiProperty({
     required: false,
@@ -48,7 +48,7 @@ export class CreateResourceDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  supportingImages?: string[];
+  supportingImages?: string[]
 
   @ApiProperty({
     required: false,
@@ -56,7 +56,7 @@ export class CreateResourceDto {
   })
   @IsOptional()
   @IsString()
-  primaryImageKey?: string;
+  primaryImageKey?: string
 
   @ApiProperty({
     required: false,
@@ -66,31 +66,31 @@ export class CreateResourceDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  supportingImageKeys?: string[];
+  supportingImageKeys?: string[]
 
   @ApiProperty({ required: false, example: 'Single-origin medium roast.' })
   @IsOptional()
   @IsString()
-  description?: string;
+  description?: string
 
   @ApiProperty({ required: false, example: 'Store in a cool, dry place.' })
   @IsOptional()
   @IsString()
-  notes?: string;
+  notes?: string
 
   // Product-only.
   @ApiProperty({ required: false, example: 100 })
   @IsOptional()
   @IsInt()
   @Min(0)
-  availableQuantity?: number;
+  availableQuantity?: number
 
   // Product-only: reorder point for low-stock alerts.
   @ApiProperty({ required: false, example: 5 })
   @IsOptional()
   @IsInt()
   @Min(0)
-  lowStockThreshold?: number;
+  lowStockThreshold?: number
 
   // Service-only.
   @ApiProperty({
@@ -100,5 +100,5 @@ export class CreateResourceDto {
   })
   @IsOptional()
   @IsObject()
-  businessHours?: Record<string, { open: string; close: string }>;
+  businessHours?: Record<string, { open: string; close: string }>
 }
