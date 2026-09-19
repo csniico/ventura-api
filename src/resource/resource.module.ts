@@ -5,6 +5,7 @@ import { UserModule } from '../user/user.module'
 import { ResourceController } from './application/resource.controller'
 import { ResourceService } from './application/resource.service'
 import { PostgresResourceEntity } from './domain/postgres.resource-entity'
+import { PostgresStockAdjustmentEntity } from './domain/postgres.stock-adjustment-entity'
 import { RESOURCE_DATA_SOURCE } from './domain/resource.repository'
 import { PostgresResourceRepository } from './infrastructure/postgres-resource.repository'
 
@@ -12,7 +13,10 @@ import { PostgresResourceRepository } from './infrastructure/postgres-resource.r
   imports: [
     UserModule,
     FileStorageModule,
-    MikroOrmModule.forFeature([PostgresResourceEntity]),
+    MikroOrmModule.forFeature([
+      PostgresResourceEntity,
+      PostgresStockAdjustmentEntity,
+    ]),
   ],
   controllers: [ResourceController],
   providers: [

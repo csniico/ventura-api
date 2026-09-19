@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { Type } from 'class-transformer'
 import {
   IsArray,
   IsEnum,
@@ -9,8 +10,10 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator'
 import { ResourceType } from '../domain/resource.entity'
+import { ResourceUnitDto } from './resource-unit.dto'
 
 /**
  * Create a sellable resource. `type`, `name`, and `price` are required.
@@ -91,6 +94,20 @@ export class CreateResourceDto {
   @IsInt()
   @Min(0)
   lowStockThreshold?: number
+
+  // Product-only: label for the unit stock is counted in.
+  @ApiProperty({ required: false, example: 'piece' })
+  @IsOptional()
+  @IsString()
+  baseUnit?: string
+
+  // Product-only: alternate bulk units for sale/purchase.
+  @ApiProperty({ required: false, type: [ResourceUnitDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ResourceUnitDto)
+  units?: ResourceUnitDto[]
 
   // Service-only.
   @ApiProperty({

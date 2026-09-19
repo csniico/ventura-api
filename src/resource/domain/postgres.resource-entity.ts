@@ -1,6 +1,6 @@
 import { defineEntity, InferEntity } from '@mikro-orm/core'
 import { nanoid } from 'nanoid/non-secure'
-import { BusinessHours, ResourceType } from './resource.entity'
+import { BusinessHours, ResourceType, ResourceUnit } from './resource.entity'
 
 /**
  * Postgres mapping for a resource (MikroORM v7 schema-first `defineEntity`).
@@ -30,6 +30,8 @@ export const PostgresResourceEntity = defineEntity({
     notes: p.string().nullable(),
     availableQuantity: p.integer().default(0),
     lowStockThreshold: p.integer().default(5),
+    baseUnit: p.string().nullable(),
+    units: p.json<ResourceUnit[]>().defaultRaw(`'[]'`),
     businessHours: p.json<BusinessHours>().nullable(),
     createdAt: p
       .datetime()

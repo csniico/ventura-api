@@ -24,13 +24,17 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { AuthUser } from '../../auth/types/auth.types'
 import { paginate } from '../../common/dto/paginated'
 import { paginatedResponse } from '../../common/dto/paginated-response'
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
 import { UserServiceV2 } from '../../user/application/user.service'
 import { CreateResourceDto } from '../dto/create-resource.dto'
+import { CreateStockAdjustmentDto } from '../dto/create-stock-adjustment.dto'
 import { ListResourceQueryDto } from '../dto/list-resource-query.dto'
 import { UpdateResourceDto } from '../dto/update-resource.dto'
 import { ResourceResponse } from '../responses/resource.response'
+import { StockAdjustmentResponse } from '../responses/stock-adjustment.response'
 import { toResourceResponse } from './resource.mapper'
 import { ResourceService } from './resource.service'
+import { toStockAdjustmentResponse } from './stock-adjustment.mapper'
 
 interface AuthedRequest {
   user: AuthUser
@@ -92,6 +96,50 @@ export class ResourceController {
     const businessId = await this.resolveBusinessId(req)
     return toResourceResponse(
       await this.resourceService.getById(businessId, id),
+    )
+  }
+
+  /** Record a manual stock adjustment against a product. */
+  @ApiOperation({ summary: 'Record a manual stock adjustment (product)' })
+  @ApiResponse({ status: 201, type: StockAdjustmentResponse })
+  @HttpCode(HttpStatus.CREATED)
+  @Post('/:id/stock-adjustments')
+  async adjustStock(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body() dto: CreateStockAdjustmentDto,
+  ) {
+    const businessId = await this.resolveBusinessId(req)
+    return toStockAdjustmentResponse(
+      await this.resourceService.adjustStock(
+        businessId,
+        id,
+        dto,
+        req.user.userId,
+      ),
+    )
+  }
+
+  /** List a product's stock-adjustment history. */
+  @ApiOperation({ summary: 'List stock-adjustment history (paginated)' })
+  @ApiOkResponse({ type: paginatedResponse(StockAdjustmentResponse) })
+  @Get('/:id/stock-adjustments')
+  async listAdjustments(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    const businessId = await this.resolveBusinessId(req)
+    const page = await this.resourceService.listAdjustments(
+      businessId,
+      id,
+      query,
+    )
+    return paginate(
+      page.data.map(toStockAdjustmentResponse),
+      page.meta.total,
+      page.meta.page,
+      page.meta.limit,
     )
   }
 

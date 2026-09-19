@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { ResourceType } from '../domain/resource.entity'
+import { ResourceType, ResourceUnit } from '../domain/resource.entity'
 
 /** Public shape of a Resource returned by the API. */
 export class ResourceResponse {
@@ -66,6 +66,15 @@ export class ResourceResponse {
 
   @ApiProperty({ example: 5 })
   lowStockThreshold!: number
+
+  @ApiProperty({ required: false, nullable: true, example: 'piece' })
+  baseUnit?: string | null
+
+  @ApiProperty({
+    type: [Object],
+    example: [{ name: 'carton', factor: 24, price: 45.0 }],
+  })
+  units!: ResourceUnit[]
 
   @ApiProperty({
     type: Object,

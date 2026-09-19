@@ -5,12 +5,14 @@ import {
   IsArray,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Min,
   ValidateNested,
 } from 'class-validator'
 
-/** A requested line item: which resource and how many. */
+/** A requested line item: which resource, how many, and (optionally) in what
+ * unit. Omit `unit` to order in the product's base unit. */
 export class CreateOrderItemDto {
   @ApiProperty({ example: '665f1b2c3d4e5f6a7b8c9d0e' })
   @IsString()
@@ -21,6 +23,16 @@ export class CreateOrderItemDto {
   @IsInt()
   @Min(1)
   quantity!: number
+
+  @ApiProperty({
+    required: false,
+    example: 'carton',
+    description:
+      'A bulk unit defined on the product; defaults to the base unit.',
+  })
+  @IsOptional()
+  @IsString()
+  unit?: string
 }
 
 export class CreateOrderDto {

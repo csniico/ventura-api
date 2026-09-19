@@ -169,6 +169,8 @@ describe('DashboardService (behavioural, fake repositories)', () => {
               name,
               price: 10,
               quantity,
+              unit: 'unit',
+              unitFactor: 1,
               subTotal: 10 * quantity,
             },
           ],

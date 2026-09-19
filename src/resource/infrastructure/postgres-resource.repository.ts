@@ -5,13 +5,23 @@ import {
   PostgresResource,
   PostgresResourceEntity,
 } from '../domain/postgres.resource-entity'
+import {
+  PostgresStockAdjustment,
+  PostgresStockAdjustmentEntity,
+} from '../domain/postgres.stock-adjustment-entity'
 import { IResource, ResourceType } from '../domain/resource.entity'
 import {
   ICreateResource,
+  IRecordAdjustment,
   IUpdateResource,
+  ListAdjustmentsOptions,
   ListResourcesOptions,
   ResourceRepository,
 } from '../domain/resource.repository'
+import {
+  IStockAdjustment,
+  StockAdjustmentReason,
+} from '../domain/stock-adjustment.entity'
 
 /** Escape LIKE/ILIKE wildcards so a raw search term matches literally. */
 function escapeLike(value: string): string {
@@ -39,6 +49,8 @@ export class PostgresResourceRepository implements ResourceRepository {
       notes: entity.notes,
       availableQuantity: entity.availableQuantity,
       lowStockThreshold: entity.lowStockThreshold,
+      baseUnit: entity.baseUnit,
+      units: entity.units ?? [],
       businessHours: entity.businessHours,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
@@ -117,18 +129,15 @@ export class PostgresResourceRepository implements ResourceRepository {
     id: string,
     quantity: number,
   ): Promise<boolean> {
-    // Single conditional UPDATE: only decrements a product with enough stock.
-    const affected = await this.em.nativeUpdate(
-      PostgresResourceEntity,
-      {
-        id,
-        businessId,
-        type: ResourceType.PRODUCT,
-        availableQuantity: { $gte: quantity },
-      },
-      { availableQuantity: raw(`available_quantity - ${quantity}`) },
-    )
-    return affected === 1
+    // Order reservation: logs an `order` ledger row and returns false if there
+    // wasn't enough stock (or it isn't a product).
+    const adjustment = await this.recordAdjustment({
+      businessId,
+      resourceId: id,
+      delta: -quantity,
+      reason: StockAdjustmentReason.ORDER,
+    })
+    return adjustment !== null
   }
 
   async incrementStock(
@@ -136,11 +145,82 @@ export class PostgresResourceRepository implements ResourceRepository {
     id: string,
     quantity: number,
   ): Promise<void> {
-    await this.em.nativeUpdate(
-      PostgresResourceEntity,
-      { id, businessId, type: ResourceType.PRODUCT },
-      { availableQuantity: raw(`available_quantity + ${quantity}`) },
+    // Order return (cancel / rollback / edit-down): logs an `order_cancel` row.
+    await this.recordAdjustment({
+      businessId,
+      resourceId: id,
+      delta: quantity,
+      reason: StockAdjustmentReason.ORDER_CANCEL,
+    })
+  }
+
+  async recordAdjustment(
+    data: IRecordAdjustment,
+  ): Promise<IStockAdjustment | null> {
+    const { businessId, resourceId, delta } = data
+    // Balance update + ledger insert must be one atomic unit so a row and the
+    // cached `availableQuantity` can never disagree.
+    return await this.em.transactional(async (em) => {
+      const where: FilterQuery<PostgresResource> = {
+        id: resourceId,
+        businessId,
+        type: ResourceType.PRODUCT,
+      }
+      // Guard against overselling: a negative delta needs enough on hand.
+      if (delta < 0) where.availableQuantity = { $gte: -delta }
+
+      const affected = await em.nativeUpdate(PostgresResourceEntity, where, {
+        availableQuantity: raw(`available_quantity + (${delta})`),
+      })
+      if (affected !== 1) return null
+
+      const resource = await em.findOne(PostgresResourceEntity, {
+        id: resourceId,
+        businessId,
+      })
+      const balanceAfter = resource?.availableQuantity ?? 0
+
+      const adjustment = em.create(PostgresStockAdjustmentEntity, {
+        businessId,
+        resourceId,
+        delta,
+        reason: data.reason,
+        balanceAfter,
+        note: data.note ?? null,
+        createdBy: data.createdBy ?? null,
+      })
+      await em.flush()
+      return this.toAdjustmentDomain(adjustment)
+    })
+  }
+
+  async listAdjustments(
+    businessId: string,
+    resourceId: string,
+    opts: ListAdjustmentsOptions,
+  ): Promise<{ data: IStockAdjustment[]; total: number }> {
+    const [rows, total] = await this.em.findAndCount(
+      PostgresStockAdjustmentEntity,
+      { businessId, resourceId },
+      { orderBy: { createdAt: 'DESC' }, limit: opts.limit, offset: opts.skip },
     )
+    return { data: rows.map((r) => this.toAdjustmentDomain(r)), total }
+  }
+
+  private toAdjustmentDomain(
+    entity: PostgresStockAdjustment,
+  ): IStockAdjustment {
+    return {
+      id: entity.id,
+      businessId: entity.businessId,
+      resourceId: entity.resourceId,
+      delta: entity.delta,
+      reason: entity.reason,
+      balanceAfter: entity.balanceAfter,
+      note: entity.note,
+      createdBy: entity.createdBy,
+      createdAt: entity.createdAt,
+    }
   }
 
   async countLowStock(businessId: string): Promise<number> {

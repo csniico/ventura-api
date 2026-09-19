@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Logger,
@@ -14,7 +15,9 @@ import { FileStorageService } from '../../file-storage/file-storage.service'
 import { IResource, ResourceType } from '../domain/resource.entity'
 import type { ResourceRepository } from '../domain/resource.repository'
 import { RESOURCE_DATA_SOURCE } from '../domain/resource.repository'
+import { IStockAdjustment } from '../domain/stock-adjustment.entity'
 import { CreateResourceDto } from '../dto/create-resource.dto'
+import { CreateStockAdjustmentDto } from '../dto/create-stock-adjustment.dto'
 import { UpdateResourceDto } from '../dto/update-resource.dto'
 
 /**
@@ -41,6 +44,8 @@ export class ResourceService {
     fields: {
       availableQuantity?: number
       lowStockThreshold?: number
+      baseUnit?: string
+      units?: unknown[]
       businessHours?: unknown
     },
   ): void {
@@ -54,6 +59,12 @@ export class ResourceService {
         throw new BadRequestException(
           'lowStockThreshold is not valid for a service.',
         )
+      }
+      if (fields.baseUnit !== undefined) {
+        throw new BadRequestException('baseUnit is not valid for a service.')
+      }
+      if (fields.units !== undefined) {
+        throw new BadRequestException('units are not valid for a service.')
       }
     }
     if (type === ResourceType.PRODUCT && fields.businessHours !== undefined) {
@@ -202,5 +213,54 @@ export class ResourceService {
   /** Count products at or below their low-stock threshold (for the dashboard). */
   async countLowStock(businessId: string): Promise<number> {
     return await this.resourceRepository.countLowStock(businessId)
+  }
+
+  /**
+   * Record a manual stock adjustment against a product. Rejects non-products
+   * (400), a zero delta (400), and adjustments that would drive stock negative
+   * (409). Returns the created ledger row (carrying the resulting balance).
+   */
+  async adjustStock(
+    businessId: string,
+    resourceId: string,
+    dto: CreateStockAdjustmentDto,
+    createdBy: string,
+  ): Promise<IStockAdjustment> {
+    if (dto.delta === 0) {
+      throw new BadRequestException('delta must be a non-zero integer.')
+    }
+    const resource = await this.getById(businessId, resourceId)
+    if (resource.type !== ResourceType.PRODUCT) {
+      throw new BadRequestException('Stock adjustments apply to products only.')
+    }
+    const adjustment = await this.resourceRepository.recordAdjustment({
+      businessId,
+      resourceId,
+      delta: dto.delta,
+      reason: dto.reason,
+      note: dto.note ?? null,
+      createdBy,
+    })
+    if (!adjustment) {
+      throw new ConflictException('Insufficient stock for this adjustment.')
+    }
+    return adjustment
+  }
+
+  /** A product's stock-adjustment history, newest first, paginated. */
+  async listAdjustments(
+    businessId: string,
+    resourceId: string,
+    opts: { page?: number; limit?: number } = {},
+  ): Promise<Paginated<IStockAdjustment>> {
+    // 404s if the resource isn't in this business.
+    await this.getById(businessId, resourceId)
+    const { page, limit, skip } = normalizePaging(opts.page, opts.limit)
+    const { data, total } = await this.resourceRepository.listAdjustments(
+      businessId,
+      resourceId,
+      { skip, limit },
+    )
+    return paginate(data, total, page, limit)
   }
 }

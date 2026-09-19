@@ -1,4 +1,13 @@
-import { BusinessHours, IResource, ResourceType } from './resource.entity'
+import {
+  BusinessHours,
+  IResource,
+  ResourceType,
+  ResourceUnit,
+} from './resource.entity'
+import {
+  IStockAdjustment,
+  StockAdjustmentReason,
+} from './stock-adjustment.entity'
 
 /** Fields accepted when creating a resource (scoped to a business). */
 export interface ICreateResource {
@@ -14,6 +23,8 @@ export interface ICreateResource {
   notes?: string | null
   availableQuantity?: number
   lowStockThreshold?: number
+  baseUnit?: string | null
+  units?: ResourceUnit[]
   businessHours?: BusinessHours | null
 }
 
@@ -29,6 +40,8 @@ export interface IUpdateResource {
   notes?: string | null
   availableQuantity?: number
   lowStockThreshold?: number
+  baseUnit?: string | null
+  units?: ResourceUnit[]
   businessHours?: BusinessHours | null
 }
 
@@ -38,6 +51,23 @@ export interface ListResourcesOptions {
   limit: number
   q?: string
   type?: ResourceType
+}
+
+/** A single signed stock movement to record against a product. */
+export interface IRecordAdjustment {
+  businessId: string
+  resourceId: string
+  /** Signed change: positive adds stock, negative removes it. */
+  delta: number
+  reason: StockAdjustmentReason
+  note?: string | null
+  createdBy?: string | null
+}
+
+/** Options for a paginated stock-adjustment history listing. */
+export interface ListAdjustmentsOptions {
+  skip: number
+  limit: number
 }
 
 /**
@@ -76,6 +106,19 @@ export interface ResourceRepository {
   ): Promise<void>
   /** Count products at or below their low-stock threshold. */
   countLowStock(businessId: string): Promise<number>
+  /**
+   * Atomically apply a signed stock `delta` to a product and append a ledger
+   * row (with the resulting `balanceAfter`) in the same transaction. Returns the
+   * created adjustment, or null if it couldn't be applied (insufficient stock
+   * for a negative delta, or the resource isn't a product).
+   */
+  recordAdjustment(data: IRecordAdjustment): Promise<IStockAdjustment | null>
+  /** A product's stock-adjustment history, newest first, paginated. */
+  listAdjustments(
+    businessId: string,
+    resourceId: string,
+    opts: ListAdjustmentsOptions,
+  ): Promise<{ data: IStockAdjustment[]; total: number }>
 }
 
 // Token for Nest DI (interfaces have no runtime representation to bind against).

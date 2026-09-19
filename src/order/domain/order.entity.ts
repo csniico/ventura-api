@@ -15,8 +15,14 @@ export interface OrderItemSnapshot {
   resourceId: string
   type: ResourceType
   name: string
+  /** Price for one of the chosen `unit`. */
   price: number
+  /** Count in the chosen `unit` (not base units). */
   quantity: number
+  /** The sell unit chosen (base unit name, or a bulk unit like "carton"). */
+  unit: string
+  /** Base units per one `unit`; stock moves by `quantity * unitFactor`. */
+  unitFactor: number
   subTotal: number
 }
 

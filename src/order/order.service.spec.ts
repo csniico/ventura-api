@@ -176,6 +176,66 @@ describe('OrderService (behavioural, fake repositories)', () => {
     })
   })
 
+  describe('multi-unit (bulk-to-retail)', () => {
+    async function seedProductWithCarton() {
+      const p = await resources.create(businessA, {
+        type: ResourceType.PRODUCT,
+        name: 'Soda',
+        price: 2,
+        availableQuantity: 100,
+        baseUnit: 'piece',
+        units: [{ name: 'carton', factor: 24, price: 45 }],
+      })
+      return p.id
+    }
+
+    it('orders in a bulk unit: converts stock and prices by the unit', async () => {
+      const customerId = await seedCustomer()
+      const productId = await seedProductWithCarton()
+
+      const order = await orders.create(businessA, {
+        customerId,
+        items: [{ resourceId: productId, quantity: 2, unit: 'carton' }],
+      })
+
+      const line = order.items[0]
+      expect(line.unit).toBe('carton')
+      expect(line.unitFactor).toBe(24)
+      expect(line.quantity).toBe(2)
+      expect(line.price).toBe(45)
+      expect(line.subTotal).toBe(90)
+      expect(order.totalAmount).toBe(90)
+      // Stock moved by 2 * 24 = 48 base units: 100 -> 52.
+      expect(resourcesFake._get(productId)?.availableQuantity).toBe(52)
+    })
+
+    it('restores base units when a bulk-unit order is cancelled', async () => {
+      const customerId = await seedCustomer()
+      const productId = await seedProductWithCarton()
+      const order = await orders.create(businessA, {
+        customerId,
+        items: [{ resourceId: productId, quantity: 2, unit: 'carton' }],
+      })
+      expect(resourcesFake._get(productId)?.availableQuantity).toBe(52)
+
+      await orders.updateStatus(businessA, order.id, OrderStatus.CANCELLED)
+      expect(resourcesFake._get(productId)?.availableQuantity).toBe(100)
+    })
+
+    it('rejects an unknown unit', async () => {
+      const customerId = await seedCustomer()
+      const productId = await seedProductWithCarton()
+      await expect(
+        orders.create(businessA, {
+          customerId,
+          items: [{ resourceId: productId, quantity: 1, unit: 'pallet' }],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException)
+      // Nothing reserved.
+      expect(resourcesFake._get(productId)?.availableQuantity).toBe(100)
+    })
+  })
+
   describe('list / getById', () => {
     it('lists and filters by status', async () => {
       const customerId = await seedCustomer()

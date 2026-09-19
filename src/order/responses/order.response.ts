@@ -19,6 +19,18 @@ export class OrderItemResponse {
   @ApiProperty({ example: 2 })
   quantity!: number
 
+  @ApiProperty({
+    example: 'piece',
+    description: 'The sell unit for this line.',
+  })
+  unit!: string
+
+  @ApiProperty({
+    example: 1,
+    description: 'Base units per one `unit` (stock moves by quantity * this).',
+  })
+  unitFactor!: number
+
   @ApiProperty({ example: 19.98 })
   subTotal!: number
 }

@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { FileStorageService } from '../file-storage/file-storage.service'
 import {
@@ -8,6 +12,7 @@ import {
 import { mockFileStorageProvider } from '../test-utils/file-storage.mock'
 import { ResourceService } from './application/resource.service'
 import { ResourceType } from './domain/resource.entity'
+import { StockAdjustmentReason } from './domain/stock-adjustment.entity'
 
 /**
  * Behavioural spec for the Postgres-backed ResourceService, run against an
@@ -117,6 +122,30 @@ describe('ResourceService (behavioural, fake repository)', () => {
         'uploads/s1.png',
         'uploads/s2.png',
       ])
+    })
+
+    it('creates a product with a base unit and bulk units', async () => {
+      const p = await service.create(businessA, {
+        type: ResourceType.PRODUCT,
+        name: 'Soda',
+        price: 2,
+        availableQuantity: 100,
+        baseUnit: 'piece',
+        units: [{ name: 'carton', factor: 24, price: 45 }],
+      })
+      expect(p.baseUnit).toBe('piece')
+      expect(p.units).toEqual([{ name: 'carton', factor: 24, price: 45 }])
+    })
+
+    it('rejects units on a service', async () => {
+      await expect(
+        service.create(businessA, {
+          type: ResourceType.SERVICE,
+          name: 'Bad',
+          price: 1,
+          units: [{ name: 'carton', factor: 24, price: 45 }],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException)
     })
   })
 
@@ -290,6 +319,92 @@ describe('ResourceService (behavioural, fake repository)', () => {
         price: 1,
       }) // services excluded
       expect(await service.countLowStock(businessA)).toBe(2)
+    })
+  })
+
+  describe('stock adjustments (ledger)', () => {
+    const user = 'user-1'
+    const makeProduct = (qty: number) =>
+      service.create(businessA, {
+        type: ResourceType.PRODUCT,
+        name: 'Ledgered',
+        price: 1,
+        availableQuantity: qty,
+      })
+
+    it('applies a positive adjustment and records the resulting balance', async () => {
+      const p = await makeProduct(30)
+      const adj = await service.adjustStock(
+        businessA,
+        p.id,
+        { delta: 20, reason: StockAdjustmentReason.RESTOCK },
+        user,
+      )
+      expect(adj.delta).toBe(20)
+      expect(adj.balanceAfter).toBe(50)
+      expect(adj.reason).toBe(StockAdjustmentReason.RESTOCK)
+      expect(adj.createdBy).toBe(user)
+      expect(resourcesFake._get(p.id)?.availableQuantity).toBe(50)
+    })
+
+    it('rejects an adjustment that would drive stock negative (409)', async () => {
+      const p = await makeProduct(5)
+      await expect(
+        service.adjustStock(
+          businessA,
+          p.id,
+          { delta: -10, reason: StockAdjustmentReason.CORRECTION },
+          user,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException)
+      expect(resourcesFake._get(p.id)?.availableQuantity).toBe(5)
+    })
+
+    it('rejects a zero delta (400)', async () => {
+      const p = await makeProduct(5)
+      await expect(
+        service.adjustStock(
+          businessA,
+          p.id,
+          { delta: 0, reason: StockAdjustmentReason.MANUAL },
+          user,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException)
+    })
+
+    it('rejects adjustments on a service (400)', async () => {
+      const s = await service.create(businessA, {
+        type: ResourceType.SERVICE,
+        name: 'Svc',
+        price: 1,
+      })
+      await expect(
+        service.adjustStock(
+          businessA,
+          s.id,
+          { delta: 5, reason: StockAdjustmentReason.RESTOCK },
+          user,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException)
+    })
+
+    it('logs order-flow movements and lists history newest-first', async () => {
+      const p = await makeProduct(100)
+      await service.decrementStock(businessA, p.id, 4) // order reservation
+      await service.adjustStock(
+        businessA,
+        p.id,
+        { delta: 10, reason: StockAdjustmentReason.RESTOCK },
+        user,
+      )
+
+      const page = await service.listAdjustments(businessA, p.id, {})
+      expect(page.data.map((a) => a.reason)).toEqual([
+        StockAdjustmentReason.RESTOCK,
+        StockAdjustmentReason.ORDER,
+      ])
+      expect(page.data[0].balanceAfter).toBe(106) // 100 - 4 + 10
+      expect(page.data[1].delta).toBe(-4)
     })
   })
 
