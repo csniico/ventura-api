@@ -4,11 +4,17 @@ import { ResourceService } from '../resource/application/resource.service'
 import { IResource, ResourceType } from '../resource/domain/resource.entity'
 import {
   ICreateResource,
+  IRecordAdjustment,
   IUpdateResource,
+  ListAdjustmentsOptions,
   ListResourcesOptions,
   RESOURCE_DATA_SOURCE,
   ResourceRepository,
 } from '../resource/domain/resource.repository'
+import {
+  IStockAdjustment,
+  StockAdjustmentReason,
+} from '../resource/domain/stock-adjustment.entity'
 
 /**
  * In-memory `ResourceRepository` for tests. Reproduces the Postgres entity's
@@ -16,7 +22,9 @@ import {
  */
 export class FakeResourceRepository implements ResourceRepository {
   private readonly rows = new Map<string, IResource>()
+  private readonly adjustments: IStockAdjustment[] = []
   private seq = 0
+  private adjSeq = 0
 
   create(data: ICreateResource): Promise<IResource> {
     const now = new Date()
@@ -35,6 +43,8 @@ export class FakeResourceRepository implements ResourceRepository {
       notes: data.notes ?? null,
       availableQuantity: data.availableQuantity ?? 0,
       lowStockThreshold: data.lowStockThreshold ?? 5,
+      baseUnit: data.baseUnit ?? null,
+      units: data.units ?? [],
       businessHours: data.businessHours ?? null,
       createdAt: now,
       updatedAt: now,
@@ -87,35 +97,70 @@ export class FakeResourceRepository implements ResourceRepository {
     this.rows.delete(id)
     return Promise.resolve({ ...existing })
   }
-  decrementStock(
+  async decrementStock(
     businessId: string,
     id: string,
     quantity: number,
   ): Promise<boolean> {
-    const r = this.rows.get(id)
-    if (
-      !r ||
-      r.businessId !== businessId ||
-      r.type !== ResourceType.PRODUCT ||
-      r.availableQuantity < quantity
-    ) {
-      return Promise.resolve(false)
-    }
-    r.availableQuantity -= quantity
-    r.updatedAt = new Date()
-    return Promise.resolve(true)
+    const adjustment = await this.recordAdjustment({
+      businessId,
+      resourceId: id,
+      delta: -quantity,
+      reason: StockAdjustmentReason.ORDER,
+    })
+    return adjustment !== null
   }
-  incrementStock(
+  async incrementStock(
     businessId: string,
     id: string,
     quantity: number,
   ): Promise<void> {
-    const r = this.rows.get(id)
-    if (r && r.businessId === businessId && r.type === ResourceType.PRODUCT) {
-      r.availableQuantity += quantity
-      r.updatedAt = new Date()
+    await this.recordAdjustment({
+      businessId,
+      resourceId: id,
+      delta: quantity,
+      reason: StockAdjustmentReason.ORDER_CANCEL,
+    })
+  }
+  recordAdjustment(data: IRecordAdjustment): Promise<IStockAdjustment | null> {
+    const r = this.rows.get(data.resourceId)
+    if (
+      !r ||
+      r.businessId !== data.businessId ||
+      r.type !== ResourceType.PRODUCT ||
+      (data.delta < 0 && r.availableQuantity < -data.delta)
+    ) {
+      return Promise.resolve(null)
     }
-    return Promise.resolve()
+    r.availableQuantity += data.delta
+    r.updatedAt = new Date()
+    const adjustment: IStockAdjustment = {
+      id: `40000000-0000-4000-8000-${String(++this.adjSeq).padStart(12, '0')}`,
+      businessId: data.businessId,
+      resourceId: data.resourceId,
+      delta: data.delta,
+      reason: data.reason,
+      balanceAfter: r.availableQuantity,
+      note: data.note ?? null,
+      createdBy: data.createdBy ?? null,
+      createdAt: new Date(),
+    }
+    this.adjustments.push(adjustment)
+    return Promise.resolve({ ...adjustment })
+  }
+  listAdjustments(
+    businessId: string,
+    resourceId: string,
+    opts: ListAdjustmentsOptions,
+  ): Promise<{ data: IStockAdjustment[]; total: number }> {
+    const rows = this.adjustments
+      .filter((a) => a.businessId === businessId && a.resourceId === resourceId)
+      .reverse() // newest first
+    const total = rows.length
+    const data = rows
+      .slice(opts.skip, opts.skip + opts.limit)
+      .map((a) => ({ ...a }))
+    return Promise.resolve({ data, total })
   }
   countLowStock(businessId: string): Promise<number> {
     const n = [...this.rows.values()].filter(
@@ -130,7 +175,9 @@ export class FakeResourceRepository implements ResourceRepository {
   // --- Test-only helpers (not part of the port) ---
   _clear(): void {
     this.rows.clear()
+    this.adjustments.length = 0
     this.seq = 0
+    this.adjSeq = 0
   }
   _get(id: string): IResource | undefined {
     return this.rows.get(id)

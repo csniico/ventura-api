@@ -7,14 +7,24 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common'
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger'
+import { AdminGuard } from '../../auth/guards/admin.guard'
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { toAdminResponse } from '../application/admin.mapper'
 import { AdminProfileService } from '../application/admin-profile.service'
 import { CreateAdminDto, UpdateAdminProfileDto } from '../dto/admin-profile.dto'
 import { AdminResponse } from '../responses/admin.response'
 
 @ApiTags('Admin')
+@ApiBearerAuth('bearer')
+@UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('admin/profile')
 export class AdminProfileController {
   constructor(private readonly adminProfileService: AdminProfileService) {}

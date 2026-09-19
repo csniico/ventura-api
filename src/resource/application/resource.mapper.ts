@@ -21,6 +21,8 @@ export function toResourceResponse(resource: IResource): ResourceResponse {
     notes: resource.notes ?? null,
     availableQuantity: resource.availableQuantity,
     lowStockThreshold: resource.lowStockThreshold,
+    baseUnit: resource.baseUnit ?? null,
+    units: resource.units ?? [],
     businessHours: resource.businessHours ?? null,
     createdAt: resource.createdAt,
     updatedAt: resource.updatedAt,

@@ -7,12 +7,22 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common'
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger'
+import { AdminGuard } from '../../auth/guards/admin.guard'
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { toUserResponse } from '../../user/application/user.mapper'
 import { AdminManageUsersService } from '../services/admin.manage-users.service'
 
 @ApiTags('Admin')
+@ApiBearerAuth('bearer')
+@UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('admin/users')
 export class AdminManageUsersController {
   constructor(private readonly manageUsers: AdminManageUsersService) {}

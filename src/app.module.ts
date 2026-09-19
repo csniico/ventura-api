@@ -49,14 +49,14 @@ import { UserModule } from './user/user.module'
         // const password = configService.get<string>('PG_PASSWORD')
         // const dbName = configService.get<string>('PG_DBNAME')
         // const user = configService.get<string>('PG_USER')
-        const clientUri = configService.get<string>('PG_URI');
+        const clientUri = configService.get<string>('PG_URI')
         return {
           driver: PostgreSqlDriver,
           clientUrl: clientUri,
           driverOptions: {
             ssl: {
-              rejectUnauthorized: false
-            }
+              rejectUnauthorized: false,
+            },
           },
           autoLoadEntities: true,
           schema: 'public',

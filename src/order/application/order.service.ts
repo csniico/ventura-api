@@ -12,7 +12,7 @@ import {
 } from '../../common/dto/paginated'
 import { CustomerService } from '../../customer/application/customer.service'
 import { ResourceService } from '../../resource/application/resource.service'
-import { ResourceType } from '../../resource/domain/resource.entity'
+import { IResource, ResourceType } from '../../resource/domain/resource.entity'
 import {
   IOrder,
   OrderItemSnapshot,
@@ -39,6 +39,36 @@ export class OrderService {
     private readonly resourceService: ResourceService,
   ) {}
 
+  /**
+   * Resolve a requested sell unit against a resource. No unit (or the base
+   * unit) → factor 1 at the base price; a named bulk unit → its factor + price.
+   * An unknown unit is rejected.
+   */
+  private resolveUnit(
+    resource: IResource,
+    unitName?: string,
+  ): { unit: string; factor: number; price: number } {
+    if (!unitName || unitName === resource.baseUnit) {
+      return {
+        unit: resource.baseUnit ?? 'unit',
+        factor: 1,
+        price: resource.price,
+      }
+    }
+    const found = (resource.units ?? []).find((u) => u.name === unitName)
+    if (!found) {
+      throw new BadRequestException(
+        `Unknown unit "${unitName}" for "${resource.name}".`,
+      )
+    }
+    return { unit: found.name, factor: found.factor, price: found.price }
+  }
+
+  /** Base (stock) units a snapshot line represents: `quantity * unitFactor`. */
+  private baseUnits(item: OrderItemSnapshot): number {
+    return item.quantity * (item.unitFactor ?? 1)
+  }
+
   /** Validate every requested line against the business and snapshot it. */
   private async buildItems(
     businessId: string,
@@ -50,13 +80,16 @@ export class OrderService {
         businessId,
         line.resourceId,
       )
+      const { unit, factor, price } = this.resolveUnit(resource, line.unit)
       items.push({
         resourceId: resource.id,
         type: resource.type,
         name: resource.name,
-        price: resource.price,
+        price,
         quantity: line.quantity,
-        subTotal: resource.price * line.quantity,
+        unit,
+        unitFactor: factor,
+        subTotal: price * line.quantity,
       })
     }
     return items
@@ -81,10 +114,12 @@ export class OrderService {
     const decremented: { resourceId: string; quantity: number }[] = []
     for (const item of items) {
       if (item.type !== ResourceType.PRODUCT) continue
+      // Stock moves in base units (quantity * unitFactor).
+      const baseQty = this.baseUnits(item)
       const ok = await this.resourceService.decrementStock(
         businessId,
         item.resourceId,
-        item.quantity,
+        baseQty,
       )
       if (!ok) {
         await this.restoreStock(businessId, decremented)
@@ -92,7 +127,7 @@ export class OrderService {
       }
       decremented.push({
         resourceId: item.resourceId,
-        quantity: item.quantity,
+        quantity: baseQty,
       })
     }
 
@@ -198,7 +233,10 @@ export class OrderService {
         businessId,
         order.items
           .filter((i) => i.type === ResourceType.PRODUCT)
-          .map((i) => ({ resourceId: i.resourceId, quantity: i.quantity })),
+          .map((i) => ({
+            resourceId: i.resourceId,
+            quantity: this.baseUnits(i),
+          })),
       )
     }
 
@@ -226,13 +264,13 @@ export class OrderService {
 
     const items = await this.buildItems(businessId, lines)
 
-    // Reconcile product stock by delta vs the existing items.
+    // Reconcile product stock by delta vs the existing items, in base units.
     const oldQty = new Map<string, number>()
     for (const item of order.items) {
       if (item.type !== ResourceType.PRODUCT) continue
       oldQty.set(
         item.resourceId,
-        (oldQty.get(item.resourceId) ?? 0) + item.quantity,
+        (oldQty.get(item.resourceId) ?? 0) + this.baseUnits(item),
       )
     }
     const newQty = new Map<string, number>()
@@ -241,7 +279,7 @@ export class OrderService {
       if (item.type !== ResourceType.PRODUCT) continue
       newQty.set(
         item.resourceId,
-        (newQty.get(item.resourceId) ?? 0) + item.quantity,
+        (newQty.get(item.resourceId) ?? 0) + this.baseUnits(item),
       )
       productNames.set(item.resourceId, item.name)
     }
