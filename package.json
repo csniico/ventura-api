@@ -28,7 +28,8 @@
     "migration:up": "mikro-orm migration:up",
     "migration:down": "mikro-orm migration:down",
     "migrate:data": "tsx scripts/migrate-mongo-to-pg.ts",
-    "migrate:data:dry": "tsx scripts/migrate-mongo-to-pg.ts --dry-run"
+    "migrate:data:dry": "tsx scripts/migrate-mongo-to-pg.ts --dry-run",
+    "seed:test": "tsx scripts/seed-test-accounts.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1065.0",
