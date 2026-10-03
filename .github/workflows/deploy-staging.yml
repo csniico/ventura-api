@@ -22,6 +22,19 @@ jobs:
       RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
 
     steps:
+      # Fail before building rather than after deploying: a missing
+      # variable should not be discovered by a smoke test that then has
+      # nothing to probe.
+      - name: Check the smoke-test target is configured
+        env:
+          BASE_URL: ${{ vars.STAGING_BASE_URL }}
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "STAGING_BASE_URL repository variable is not set." >&2
+            exit 1
+          fi
+          echo "smoke target: $BASE_URL"
+
       - name: Checkout
         uses: actions/checkout@v4
 

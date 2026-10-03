@@ -14,10 +14,27 @@
  *   BASE_URL=https://api.staging.venturabiz.online tsx scripts/smoke-auth.ts
  */
 
-const baseUrl = (process.env.BASE_URL ?? 'http://localhost:3000').replace(
-  /\/$/,
-  '',
-)
+/**
+ * An unset repo variable arrives as an empty string, not undefined, so `??`
+ * would not catch it — and probing "" makes all 13 checks fail at once, which
+ * reads as a catastrophic security regression rather than a missing variable.
+ * Localhost is only a convenience for running this by hand; on CI the target
+ * must be explicit or the result means nothing.
+ */
+const configured = process.env.BASE_URL?.trim()
+
+if (!configured && process.env.CI) {
+  console.error(
+    'BASE_URL is not set. The deploy workflows pass it from the ' +
+      'STAGING_BASE_URL / PROD_BASE_URL repository variables (Settings → ' +
+      'Secrets and variables → Actions → Variables) — one of those is ' +
+      'missing. Refusing to fall back to localhost, which would report every ' +
+      'probe as a failure and look like a security regression.',
+  )
+  process.exit(2)
+}
+
+const baseUrl = (configured || 'http://localhost:3000').replace(/\/$/, '')
 
 /** A uuid that will never exist, so a 200/404 split still proves the guard. */
 const ABSENT_ID = '00000000-0000-4000-8000-000000000000'
