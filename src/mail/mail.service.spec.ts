@@ -20,6 +20,11 @@ describe('MailService (mocked Resend, in-memory record store)', () => {
   >
 
   beforeAll(async () => {
+    // The Resend client validates the key in its constructor, before the
+    // mock below can replace it. Without this the suite only passed on a
+    // machine with a real key in .env and failed everywhere else.
+    process.env.RESEND_API_KEY ??= 're_test_000000000000000000000000'
+
     const fakeMail = fakeMailRepositoryProvider()
     mails = fakeMail.mails
 
