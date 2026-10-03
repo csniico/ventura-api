@@ -33,7 +33,7 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
   let users: FakeUserRepository
   let emailChanges: FakeEmailChangeRepository
   let eventEmitter: EventEmitter2
-  let fileStorage: { deleteFile: jest.Mock }
+  let fileStorage: { deleteFileInternal: jest.Mock }
   let mail: { sendVerificationCode: jest.Mock }
 
   const MISSING = '00000000-0000-4000-8000-999999999999'
@@ -457,7 +457,7 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
       )
       expect(users._get(user.id)?.avatarUrl).toBe('https://example.com/new.png')
       expect(users._get(user.id)?.avatarKey).toBe('avatars/abc.png')
-      expect(fileStorage.deleteFile).not.toHaveBeenCalled()
+      expect(fileStorage.deleteFileInternal).not.toHaveBeenCalled()
 
       await service.updateAvatar(String(user.id), null, null)
       expect(users._get(user.id)?.avatarUrl == null).toBe(true)
@@ -471,7 +471,7 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
         'https://example.com/old.png',
         'avatars/old.png',
       )
-      fileStorage.deleteFile.mockClear()
+      fileStorage.deleteFileInternal.mockClear()
 
       await service.updateAvatar(
         String(user.id),
@@ -479,7 +479,9 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
         'avatars/new.png',
       )
 
-      expect(fileStorage.deleteFile).toHaveBeenCalledWith('avatars/old.png')
+      expect(fileStorage.deleteFileInternal).toHaveBeenCalledWith(
+        'avatars/old.png',
+      )
     })
 
     it('updateAvatar does not delete when the key is unchanged', async () => {
@@ -489,7 +491,7 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
         'https://example.com/a.png',
         'avatars/same.png',
       )
-      fileStorage.deleteFile.mockClear()
+      fileStorage.deleteFileInternal.mockClear()
 
       await service.updateAvatar(
         String(user.id),
@@ -497,7 +499,7 @@ describe('UserServiceV2 (behavioural, fake repositories)', () => {
         'avatars/same.png',
       )
 
-      expect(fileStorage.deleteFile).not.toHaveBeenCalled()
+      expect(fileStorage.deleteFileInternal).not.toHaveBeenCalled()
     })
 
     it('updateProfile updates all provided fields at once', async () => {

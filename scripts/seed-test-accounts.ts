@@ -14,16 +14,35 @@ import { randomUUID } from 'node:crypto'
 import * as argon2 from 'argon2'
 import { nanoid } from 'nanoid/non-secure'
 import { Client, type ClientConfig } from 'pg'
+import { postgresSslOptions } from '../src/common/db-ssl'
 
-const PASSWORD = 'Testpass!2345' // >= 12 chars (matches the API rule)
+// Throwaway password for the seeded QA tenants. Read from the environment so
+// no working credential lives in the repo (SEC-009); >= 12 chars to match the
+// API's password rule.
+const PASSWORD = process.env.SEED_TEST_PASSWORD
+if (!PASSWORD) {
+  throw new Error(
+    'SEED_TEST_PASSWORD is not set. Export a throwaway password (>= 12 chars) before seeding.',
+  )
+}
 
 const TENANTS = [
-  { firstName: 'Alice', lastName: 'Merchant', email: 'alice.qa@ventura.test', business: 'Alice Coffee Co.' },
-  { firstName: 'Bob', lastName: 'Trader', email: 'bob.qa@ventura.test', business: 'Bob Hardware Ltd.' },
+  {
+    firstName: 'Alice',
+    lastName: 'Merchant',
+    email: 'alice.qa@ventura.test',
+    business: 'Alice Coffee Co.',
+  },
+  {
+    firstName: 'Bob',
+    lastName: 'Trader',
+    email: 'bob.qa@ventura.test',
+    business: 'Bob Hardware Ltd.',
+  },
 ]
 
 function pgConfig(): ClientConfig {
-  const ssl = { rejectUnauthorized: false }
+  const ssl = postgresSslOptions()
   const uri = process.env.PG_URI
   if (uri) return { connectionString: uri, ssl }
   const raw = process.env.PG_HOST ?? 'localhost'
@@ -215,7 +234,13 @@ async function seedTenant(
   // Orders: two, each snapshotting a couple of line items.
   const orderIds: string[] = []
   const orderPlans = [
-    { customer: 0, lines: [{ res: 0, qty: 2 }, { res: 1, qty: 3 }] },
+    {
+      customer: 0,
+      lines: [
+        { res: 0, qty: 2 },
+        { res: 1, qty: 3 },
+      ],
+    },
     { customer: 1, lines: [{ res: 2, qty: 1 }] },
   ]
   for (const plan of orderPlans) {
@@ -316,7 +341,9 @@ async function main(): Promise<void> {
       results.push(await seedTenant(db, t))
     }
 
-    console.log('\n=== Seeded test tenants (password for both: ' + PASSWORD + ') ===')
+    console.log(
+      '\n=== Seeded test tenants (password for both: ' + PASSWORD + ') ===',
+    )
     for (const r of results) {
       console.log(`\n${r.email}`)
       console.log(`  userId      ${r.userId}`)

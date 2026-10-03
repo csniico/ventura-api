@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Req,
@@ -66,12 +67,17 @@ export class BusinessController {
     )
   }
 
-  /** Get a business by id. */
-  @ApiOperation({ summary: 'Get a business by id' })
+  /** Get a business by id — only one the authenticated user owns. */
+  @ApiOperation({ summary: 'Get a business by id (must be your own)' })
   @ApiResponse({ status: 200, type: BusinessResponse })
   @Get('/:id')
-  async getById(@Param('id') id: string) {
-    return toBusinessResponse(await this.businessService.getById(id))
+  async getById(
+    @Req() req: AuthedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return toBusinessResponse(
+      await this.businessService.getByIdForOwner(id, req.user.userId),
+    )
   }
 
   /** Update a business the authenticated user owns. */
@@ -81,7 +87,7 @@ export class BusinessController {
   @Patch('/:id')
   async update(
     @Req() req: AuthedRequest,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBusinessDto,
   ) {
     return toBusinessResponse(

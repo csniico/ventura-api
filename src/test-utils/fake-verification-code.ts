@@ -24,6 +24,7 @@ export class FakeVerificationCodeRepository
       email: data.email,
       code: data.code,
       expiresAt: data.expiresAt,
+      attempts: 0,
       createdAt: now,
       updatedAt: now,
     }
@@ -36,6 +37,16 @@ export class FakeVerificationCodeRepository
   ): Promise<IVerificationCode | null> {
     const r = this.rows.find((x) => x.email === email && x.code === code)
     return Promise.resolve(r ? { ...r } : null)
+  }
+  findByEmail(email: string): Promise<IVerificationCode | null> {
+    const r = this.rows.find((x) => x.email === email)
+    return Promise.resolve(r ? { ...r } : null)
+  }
+  incrementAttempts(id: string): Promise<number> {
+    const r = this.rows.find((x) => x.id === id)
+    if (!r) return Promise.resolve(0)
+    r.attempts += 1
+    return Promise.resolve(r.attempts)
   }
   deleteByEmail(email: string): Promise<void> {
     this.rows = this.rows.filter((x) => x.email !== email)

@@ -12,6 +12,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
 import type { Response } from 'express'
 import { AuthService } from './auth.service'
+import { Public } from './decorators/public.decorator'
 import {
   SignInAppleDto,
   SignInEmailDto,
@@ -40,6 +41,7 @@ export class AuthController {
   // Tight cap: throttle password-guessing attempts per IP.
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
+  @Public()
   @Post('/sign-in-password')
   async signInWithPassword(@Body() dto: SignInPasswordDto) {
     return await this.authService.signInWithPassword(dto.email, dto.password)
@@ -51,6 +53,7 @@ export class AuthController {
   // Tight cap: limits mail-bombing an address with sign-in codes.
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
+  @Public()
   @Post('/sign-in-email')
   async signInWithEmail(@Body() dto: SignInEmailDto) {
     return await this.authService.requestEmailCode(dto.email)
@@ -62,6 +65,7 @@ export class AuthController {
   // Tight cap: makes the 6-digit code space impractical to brute-force.
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
+  @Public()
   @Post('/verify-code')
   async verifyCode(@Body() dto: VerifyCodeDto) {
     return await this.authService.verifyEmailCode(dto.email, dto.code)
@@ -71,6 +75,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Sign in with a Google ID token' })
   @ApiResponse({ status: 200, type: AuthResponse })
   @HttpCode(HttpStatus.OK)
+  @Public()
   @Post('/sign-in-google')
   async signInWithGoogle(@Body() dto: SignInGoogleDto) {
     return await this.authService.signInWithGoogle(dto.idToken)
@@ -80,6 +85,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Verify an Apple identity token and sign in' })
   @ApiResponse({ status: 200, type: AuthResponse })
   @HttpCode(HttpStatus.OK)
+  @Public()
   @Post('/sign-in-apple')
   async signInWithApple(@Body() dto: SignInAppleDto) {
     return await this.authService.signInWithApple(dto)
@@ -92,6 +98,7 @@ export class AuthController {
    * can pick it up. iOS uses the native flow and never hits this. No guard —
    * Apple calls it directly.
    */
+  @Public()
   @Post('/apple/callback')
   appleCallback(@Body() body: Record<string, string>, @Res() res: Response) {
     const androidPackage =
@@ -106,6 +113,8 @@ export class AuthController {
   /** Exchange a valid refresh token (Bearer) for a fresh token pair. */
   @ApiOperation({ summary: 'Exchange a refresh token for a fresh token pair' })
   @ApiResponse({ status: 200, type: AuthResponse })
+  // Public to the access-token guard; RefreshJwtGuard validates the refresh token.
+  @Public()
   @UseGuards(RefreshJwtGuard)
   @HttpCode(HttpStatus.OK)
   @Post('/refresh')

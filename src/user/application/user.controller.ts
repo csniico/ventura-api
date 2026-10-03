@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -20,17 +21,13 @@ import {
   ApiTags,
 } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
+import { Public } from '../../auth/decorators/public.decorator'
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { AuthUser } from '../../auth/types/auth.types'
 import {
   ConfirmEmailChangeDto,
   RequestEmailChangeDto,
 } from '../dto/change-email.dto'
-import {
-  CreateUserWithEmailDto,
-  CreateUserWithGoogleDto,
-} from '../dto/create-user.dto'
-import { LinkGoogleAccountDto } from '../dto/link-google-account.dto'
 import { CreatePasswordDto, UpdatePasswordDto } from '../dto/password.dto'
 import {
   SetBusinessIdDto,
@@ -55,11 +52,21 @@ interface AuthedRequest {
  * Postgres-backed v2 of the user API. Mirrors every route, request DTO, and
  * response shape of the legacy `UserController` (Mongo).
  *
- * Guarding: the account-creation / sign-in-flow routes (`/email`, `/google`,
- * `/link-google`, `/:id/has-password`) run BEFORE the caller is authenticated
- * and stay public. Every self-service route requires a valid access token AND
- * that the token's user owns the target id — the `:id` path param (or
- * `dto.userId`) is never trusted on its own, closing the IDOR / takeover holes.
+ * Guarding: authentication is fail-closed app-wide (a global `JwtAuthGuard`),
+ * so every route here requires a valid access token unless it carries
+ * `@Public()`. `/:id/has-password` is the only public route — the sign-in UI
+ * calls it before the user is authenticated.
+ *
+ * On top of auth, every self-service route asserts that the token's user owns
+ * the target id — the `:id` path param (or `dto.userId`) is never trusted on
+ * its own, closing the IDOR / takeover holes.
+ *
+ * Account creation is deliberately NOT exposed over HTTP. Sign-up happens
+ * inside the auth flows (`POST /auth/sign-in-email`, `POST /auth/sign-in-google`),
+ * which verify the email code / Google ID token first and then call
+ * `UserServiceV2` in-process. Public creation routes that returned the existing
+ * record on a duplicate were an unauthenticated account-enumeration and
+ * takeover surface (SEC-002 / SEC-004).
  */
 @ApiTags('Users')
 @Controller('users')
@@ -75,32 +82,6 @@ export class UserControllerV2 {
     if (req.user.userId !== targetId) {
       throw new ForbiddenException('You can only act on your own account.')
     }
-  }
-
-  // --- Account creation (public — pre-auth) ---
-
-  @ApiOperation({ summary: 'Sign up with email (no password yet)' })
-  @ApiResponse({ status: 201, type: UserResponse })
-  @Post('/email')
-  async createWithEmail(@Body() dto: CreateUserWithEmailDto) {
-    return toUserResponse(await this.userService.createWithEmail(dto))
-  }
-
-  @ApiOperation({ summary: 'Sign up / continue with Google' })
-  @ApiResponse({ status: 201, type: UserResponse })
-  @Post('/google')
-  async createWithGoogle(@Body() dto: CreateUserWithGoogleDto) {
-    return toUserResponse(await this.userService.createWithGoogle(dto))
-  }
-
-  // --- Google account linking (public — part of the OAuth sign-in flow) ---
-
-  @ApiOperation({ summary: 'Link a Google account to an existing user' })
-  @ApiResponse({ status: 200, type: UserResponse })
-  @HttpCode(HttpStatus.OK)
-  @Post('/link-google')
-  async linkGoogleAccount(@Body() dto: LinkGoogleAccountDto) {
-    return toUserResponse(await this.userService.linkGoogleAccount(dto))
   }
 
   // --- Password ---
@@ -136,10 +117,13 @@ export class UserControllerV2 {
 
   @ApiOperation({ summary: 'Check whether a user has a password set' })
   @ApiResponse({ status: 200, type: HasPasswordResponse })
+  // Public: the sign-in UI calls this before the user is authenticated to
+  // decide whether to prompt for a password. Throttled because a 200/404 split
+  // makes it a (weak, uuid-keyed) account-existence oracle.
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @Get('/:id/has-password')
-  async hasPassword(@Param('id') id: string) {
-    // Public: the sign-in UI calls this before the user is authenticated to
-    // decide whether to prompt for a password.
+  async hasPassword(@Param('id', ParseUUIDPipe) id: string) {
     return { hasPassword: await this.userService.hasPassword(id) }
   }
 

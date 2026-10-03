@@ -24,7 +24,7 @@ describe('ResourceService (behavioural, fake repository)', () => {
   let moduleRef: TestingModule
   let service: ResourceService
   let resourcesFake: FakeResourceRepository
-  let fileStorage: { deleteFile: jest.Mock }
+  let fileStorage: { deleteFileInternal: jest.Mock }
 
   const businessA = 'biz-A'
   const businessB = 'biz-B'
@@ -44,7 +44,7 @@ describe('ResourceService (behavioural, fake repository)', () => {
 
   beforeEach(() => {
     resourcesFake._clear()
-    fileStorage.deleteFile.mockClear()
+    fileStorage.deleteFileInternal.mockClear()
   })
 
   afterAll(async () => {
@@ -424,8 +424,10 @@ describe('ResourceService (behavioural, fake repository)', () => {
       })
 
       expect(updated.primaryImageKey).toBe('uploads/new.png')
-      expect(fileStorage.deleteFile).toHaveBeenCalledTimes(1)
-      expect(fileStorage.deleteFile).toHaveBeenCalledWith('uploads/old.png')
+      expect(fileStorage.deleteFileInternal).toHaveBeenCalledTimes(1)
+      expect(fileStorage.deleteFileInternal).toHaveBeenCalledWith(
+        'uploads/old.png',
+      )
     })
 
     it('deletes objects for supporting image keys removed from the array', async () => {
@@ -441,8 +443,10 @@ describe('ResourceService (behavioural, fake repository)', () => {
         supportingImageKeys: ['uploads/a.png'],
       })
 
-      expect(fileStorage.deleteFile).toHaveBeenCalledTimes(1)
-      expect(fileStorage.deleteFile).toHaveBeenCalledWith('uploads/b.png')
+      expect(fileStorage.deleteFileInternal).toHaveBeenCalledTimes(1)
+      expect(fileStorage.deleteFileInternal).toHaveBeenCalledWith(
+        'uploads/b.png',
+      )
     })
 
     it('does not delete anything when keys are unchanged', async () => {
@@ -460,7 +464,7 @@ describe('ResourceService (behavioural, fake repository)', () => {
         supportingImageKeys: ['uploads/x.png'],
       })
 
-      expect(fileStorage.deleteFile).not.toHaveBeenCalled()
+      expect(fileStorage.deleteFileInternal).not.toHaveBeenCalled()
     })
   })
 })

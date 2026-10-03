@@ -3,19 +3,30 @@ import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { writeFileSync } from 'fs'
+import helmet from 'helmet'
 import { join } from 'path'
 import { stringify } from 'yaml'
 import { AppModule } from './app.module'
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
   const configService = app.get(ConfigService)
 
-  // Auth uses bearer tokens in the Authorization header — no cookies.
-  // Fail closed: only fall back to the permissive `*` outside production. In
-  // production an explicit ALLOWED_ORIGINS allow-list is required, so a missing
-  // env var never silently opens the API to every origin.
   const nodeEnv = configService.get<string>('NODE_ENV', 'development')
+  const isDevelopment = nodeEnv === 'development'
+
+  // HSTS, X-Frame-Options, X-Content-Type-Options, referrer policy, and a
+  // baseline CSP. The CSP is relaxed in development so the Swagger UI loads.
+  app.use(helmet({ contentSecurityPolicy: !isDevelopment }))
+  // Don't advertise the server stack.
+  app.getHttpAdapter().getInstance().disable('x-powered-by')
+
+  // Auth uses bearer tokens in the Authorization header — no cookies.
+  // Fail closed: only fall back to the permissive `*` in local development.
+  // Every deployed environment (staging included — it is internet-facing and
+  // just as worth protecting) requires an explicit ALLOWED_ORIGINS allow-list,
+  // so a missing env var never silently opens the API to every origin.
   const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS')
   let corsOrigin: string | string[] | boolean
   if (allowedOrigins) {
@@ -23,10 +34,10 @@ async function bootstrap() {
       allowedOrigins === '*'
         ? '*'
         : allowedOrigins.split(',').map((origin) => origin.trim())
-  } else if (nodeEnv === 'production') {
+  } else if (!isDevelopment) {
     corsOrigin = false
     console.warn(
-      'ALLOWED_ORIGINS is not set in production — CORS is disabled. ' +
+      `ALLOWED_ORIGINS is not set in ${nodeEnv} — CORS is disabled. ` +
         'Set an explicit comma-separated allow-list to permit browser clients.',
     )
   } else {
@@ -48,6 +59,10 @@ async function bootstrap() {
       },
     }),
   )
+
+  // Maps driver-level errors (e.g. a malformed uuid) to clean 4xx responses
+  // and keeps internal details out of 500 bodies.
+  app.useGlobalFilters(new AllExceptionsFilter())
 
   // --- OpenAPI / Swagger ---
   const swaggerConfig = new DocumentBuilder()
@@ -79,12 +94,21 @@ async function bootstrap() {
     }
   }
 
-  // Browsable UI.
-  SwaggerModule.setup('api/docs', app, document)
+  // Browsable UI. Off by default outside local development: a public
+  // /api/docs hands an attacker the entire API surface for free. Set
+  // ENABLE_SWAGGER=true to turn it back on for a specific environment.
+  const enableSwagger =
+    configService.get<string>('ENABLE_SWAGGER', String(isDevelopment)) ===
+    'true'
+  if (enableSwagger) {
+    SwaggerModule.setup('api/docs', app, document)
+  }
 
   const port = configService.get<number>('SERVER_PORT', 3000)
   await app.listen(port, '0.0.0.0')
   console.log(`App started on http://localhost:${port}`)
-  console.log(`API docs at  http://localhost:${port}/api/docs`)
+  if (enableSwagger) {
+    console.log(`API docs at  http://localhost:${port}/api/docs`)
+  }
 }
 void bootstrap()

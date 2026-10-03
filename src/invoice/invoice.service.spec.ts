@@ -225,7 +225,30 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
       )
     })
 
-    it('overrides the recipient with dto.email', async () => {
+    it('refuses to redirect the invoice to a different address', async () => {
+      const cid = String(
+        (
+          await customers.create(businessA, {
+            name: 'Ada',
+            email: 'ada@example.com',
+          })
+        ).id,
+      )
+      const { orderId } = await makeOrder(100, cid)
+      const invoice = await invoices.create(businessA, { orderIds: [orderId] })
+
+      // dto.email may confirm the recipient, never change it — otherwise the
+      // route is a way to send branded mail anywhere (SEC-005).
+      await expect(
+        invoices.send(businessA, invoice.id, {
+          email: 'attacker@example.com',
+          message: 'Pay here instead',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException)
+      expect(sendInvoice).not.toHaveBeenCalled()
+    })
+
+    it("accepts dto.email when it matches the customer's own address", async () => {
       const cid = String(
         (
           await customers.create(businessA, {
@@ -238,11 +261,11 @@ describe('InvoiceService (behavioural, fake repositories)', () => {
       const invoice = await invoices.create(businessA, { orderIds: [orderId] })
 
       await invoices.send(businessA, invoice.id, {
-        email: 'override@example.com',
+        email: 'ADA@example.com', // case-insensitive match
       })
 
       expect(sendInvoice).toHaveBeenCalledWith(
-        'override@example.com',
+        'ada@example.com',
         expect.any(Object),
       )
     })
