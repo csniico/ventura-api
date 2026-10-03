@@ -9,64 +9,6 @@ paths:
           description: ""
       tags:
         - App
-  /users/email:
-    post:
-      operationId: UserControllerV2_createWithEmail
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateUserWithEmailDto"
-      responses:
-        "201":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserResponse"
-      summary: Sign up with email (no password yet)
-      tags: &a1
-        - Users
-  /users/google:
-    post:
-      operationId: UserControllerV2_createWithGoogle
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateUserWithGoogleDto"
-      responses:
-        "201":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserResponse"
-      summary: Sign up / continue with Google
-      tags: *a1
-  /users/link-google:
-    post:
-      operationId: UserControllerV2_linkGoogleAccount
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LinkGoogleAccountDto"
-      responses:
-        "200":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserResponse"
-      summary: Link a Google account to an existing user
-      tags: *a1
   /users/password:
     post:
       operationId: UserControllerV2_createPassword
@@ -87,7 +29,8 @@ paths:
       security:
         - bearer: []
       summary: Set a password for a user that has none
-      tags: *a1
+      tags: &a1
+        - Users
     put:
       operationId: UserControllerV2_updatePassword
       parameters: []
@@ -364,8 +307,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PresignedUploadResponse"
+      security: &a2
+        - bearer: []
       summary: Request a presigned upload URL
-      tags: &a2
+      tags: &a3
         - Files
   /files:
     delete:
@@ -384,8 +329,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DeleteFileResponse"
+      security: *a2
       summary: Delete a stored file by its key
-      tags: *a2
+      tags: *a3
   /admin/profile:
     post:
       operationId: AdminProfileController_create
@@ -403,8 +349,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminResponse"
+      security: &a4
+        - bearer: []
       summary: Create an admin (returns existing if email exists)
-      tags: &a3
+      tags: &a5
         - Admin
   /admin/profile/{id}:
     get:
@@ -422,8 +370,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminResponse"
+      security: *a4
       summary: Get an admin profile by id
-      tags: *a3
+      tags: *a5
     patch:
       operationId: AdminProfileController_updateProfile
       parameters:
@@ -445,8 +394,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminResponse"
+      security: *a4
       summary: Update an admin profile
-      tags: *a3
+      tags: *a5
   /admin/users:
     get:
       operationId: AdminManageUsersController_listUsers
@@ -460,8 +410,10 @@ paths:
                 type: array
                 items:
                   type: object
+      security: &a6
+        - bearer: []
       summary: List all users (admin-only)
-      tags: &a4
+      tags: &a7
         - Admin
   /admin/users/{id}:
     get:
@@ -479,8 +431,9 @@ paths:
             application/json:
               schema:
                 type: object
+      security: *a6
       summary: Get a single user by id
-      tags: *a4
+      tags: *a7
     delete:
       operationId: AdminManageUsersController_softDeleteUser
       parameters:
@@ -496,8 +449,9 @@ paths:
             application/json:
               schema:
                 type: object
+      security: *a6
       summary: Soft-delete a user (sets deleted=true)
-      tags: *a4
+      tags: *a7
   /admin/users/{id}/restore:
     post:
       operationId: AdminManageUsersController_restoreUser
@@ -514,8 +468,9 @@ paths:
             application/json:
               schema:
                 type: object
+      security: *a6
       summary: Restore a soft-deleted user
-      tags: *a4
+      tags: *a7
   /admin/users/{id}/permanent:
     delete:
       operationId: AdminManageUsersController_hardDeleteUser
@@ -532,8 +487,9 @@ paths:
             application/json:
               schema:
                 type: object
+      security: *a6
       summary: Permanently remove a user (hard delete)
-      tags: *a4
+      tags: *a7
   /auth/sign-in-password:
     post:
       operationId: AuthController_signInWithPassword
@@ -552,7 +508,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
       summary: Sign in with email and password
-      tags: &a5
+      tags: &a8
         - Auth
   /auth/sign-in-email:
     post:
@@ -572,7 +528,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
       summary: Request a passwordless sign-in code by email
-      tags: *a5
+      tags: *a8
   /auth/verify-code:
     post:
       operationId: AuthController_verifyCode
@@ -591,7 +547,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
       summary: Verify an emailed code and sign in
-      tags: *a5
+      tags: *a8
   /auth/sign-in-google:
     post:
       operationId: AuthController_signInWithGoogle
@@ -610,7 +566,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
       summary: Sign in with a Google ID token
-      tags: *a5
+      tags: *a8
   /auth/sign-in-apple:
     post:
       operationId: AuthController_signInWithApple
@@ -629,7 +585,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
       summary: Verify an Apple identity token and sign in
-      tags: *a5
+      tags: *a8
   /auth/apple/callback:
     post:
       operationId: AuthController_appleCallback
@@ -637,7 +593,7 @@ paths:
       responses:
         "201":
           description: ""
-      tags: *a5
+      tags: *a8
   /auth/refresh:
     post:
       operationId: AuthController_refresh
@@ -650,7 +606,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
       summary: Exchange a refresh token for a fresh token pair
-      tags: *a5
+      tags: *a8
   /auth/logout:
     post:
       operationId: AuthController_logout
@@ -663,7 +619,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
       summary: Log out and revoke the stored refresh token
-      tags: *a5
+      tags: *a8
   /businesses/categories:
     get:
       operationId: BusinessController_getCategories
@@ -677,10 +633,10 @@ paths:
                 type: array
                 items:
                   type: string
-      security: &a6
+      security: &a9
         - bearer: []
       summary: List suggested business categories
-      tags: &a7
+      tags: &a10
         - Business
   /businesses/mine:
     get:
@@ -693,9 +649,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BusinessResponse"
-      security: *a6
+      security: *a9
       summary: Get the authenticated user's business
-      tags: *a7
+      tags: *a10
   /businesses:
     post:
       operationId: BusinessController_create
@@ -713,9 +669,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BusinessResponse"
-      security: *a6
+      security: *a9
       summary: Create a business
-      tags: *a7
+      tags: *a10
   /businesses/{id}:
     get:
       operationId: BusinessController_getById
@@ -732,9 +688,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BusinessResponse"
-      security: *a6
-      summary: Get a business by id
-      tags: *a7
+      security: *a9
+      summary: Get a business by id (must be your own)
+      tags: *a10
     patch:
       operationId: BusinessController_update
       parameters:
@@ -756,9 +712,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BusinessResponse"
-      security: *a6
+      security: *a9
       summary: Update a business
-      tags: *a7
+      tags: *a10
   /customers:
     post:
       operationId: CustomerController_create
@@ -776,10 +732,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CustomerResponse"
-      security: &a8
+      security: &a11
         - bearer: []
       summary: Create a customer
-      tags: &a9
+      tags: &a12
         - Customers
     get:
       operationId: CustomerController_list
@@ -812,9 +768,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedCustomerResponse"
-      security: *a8
+      security: *a11
       summary: List customers (paginated, searchable)
-      tags: *a9
+      tags: *a12
   /customers/import:
     post:
       operationId: CustomerController_importCustomers
@@ -832,9 +788,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BulkImportResultResponse"
-      security: *a8
+      security: *a11
       summary: Bulk import customers
-      tags: *a9
+      tags: *a12
   /customers/{id}:
     get:
       operationId: CustomerController_getById
@@ -851,9 +807,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CustomerResponse"
-      security: *a8
+      security: *a11
       summary: Get a customer by id
-      tags: *a9
+      tags: *a12
     patch:
       operationId: CustomerController_update
       parameters:
@@ -875,9 +831,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CustomerResponse"
-      security: *a8
+      security: *a11
       summary: Update a customer by id
-      tags: *a9
+      tags: *a12
     delete:
       operationId: CustomerController_delete
       parameters:
@@ -893,9 +849,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CustomerResponse"
-      security: *a8
+      security: *a11
       summary: Delete a customer by id
-      tags: *a9
+      tags: *a12
   /appointments:
     post:
       operationId: AppointmentController_create
@@ -913,10 +869,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AppointmentResponse"
-      security: &a10
+      security: &a13
         - bearer: []
       summary: Create an appointment
-      tags: &a11
+      tags: &a14
         - Appointments
     get:
       operationId: AppointmentController_list
@@ -940,9 +896,9 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/AppointmentResponse"
-      security: *a10
+      security: *a13
       summary: List appointments
-      tags: *a11
+      tags: *a14
   /appointments/{id}:
     get:
       operationId: AppointmentController_getById
@@ -959,9 +915,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AppointmentResponse"
-      security: *a10
+      security: *a13
       summary: Get an appointment by id
-      tags: *a11
+      tags: *a14
     patch:
       operationId: AppointmentController_update
       parameters:
@@ -983,9 +939,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AppointmentResponse"
-      security: *a10
+      security: *a13
       summary: Update an appointment
-      tags: *a11
+      tags: *a14
     delete:
       operationId: AppointmentController_delete
       parameters:
@@ -1001,9 +957,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AppointmentResponse"
-      security: *a10
+      security: *a13
       summary: Delete an appointment
-      tags: *a11
+      tags: *a14
   /appointments/{id}/status:
     patch:
       operationId: AppointmentController_updateStatus
@@ -1026,9 +982,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AppointmentResponse"
-      security: *a10
+      security: *a13
       summary: Update an appointment's status
-      tags: *a11
+      tags: *a14
   /resources:
     post:
       operationId: ResourceController_create
@@ -1046,10 +1002,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResourceResponse"
-      security: &a12
+      security: &a15
         - bearer: []
       summary: Create a resource (product or service)
-      tags: &a13
+      tags: &a16
         - Resources
     get:
       operationId: ResourceController_list
@@ -1090,9 +1046,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedResourceResponse"
-      security: *a12
+      security: *a15
       summary: List resources (paginated, searchable)
-      tags: *a13
+      tags: *a16
   /resources/{id}:
     get:
       operationId: ResourceController_getById
@@ -1109,9 +1065,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResourceResponse"
-      security: *a12
+      security: *a15
       summary: Get a resource by id
-      tags: *a13
+      tags: *a16
     patch:
       operationId: ResourceController_update
       parameters:
@@ -1133,9 +1089,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResourceResponse"
-      security: *a12
+      security: *a15
       summary: Update a resource
-      tags: *a13
+      tags: *a16
     delete:
       operationId: ResourceController_delete
       parameters:
@@ -1151,9 +1107,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResourceResponse"
-      security: *a12
+      security: *a15
       summary: Delete a resource
-      tags: *a13
+      tags: *a16
+  /resources/{id}/stock-adjustments:
+    post:
+      operationId: ResourceController_adjustStock
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockAdjustmentDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAdjustmentResponse"
+      security: *a15
+      summary: Record a manual stock adjustment (product)
+      tags: *a16
+    get:
+      operationId: ResourceController_listAdjustments
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: q
+          required: false
+          in: query
+          description: Free-text search query.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedStockAdjustmentResponse"
+      security: *a15
+      summary: List stock-adjustment history (paginated)
+      tags: *a16
   /orders:
     post:
       operationId: OrderController_create
@@ -1171,10 +1191,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderResponse"
-      security: &a14
+      security: &a17
         - bearer: []
       summary: Create an order
-      tags: &a15
+      tags: &a18
         - Orders
     get:
       operationId: OrderController_list
@@ -1221,9 +1241,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedOrderResponse"
-      security: *a14
+      security: *a17
       summary: List orders (paginated, searchable)
-      tags: *a15
+      tags: *a18
   /orders/{id}:
     get:
       operationId: OrderController_getById
@@ -1240,9 +1260,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderResponse"
-      security: *a14
+      security: *a17
       summary: Get an order by id
-      tags: *a15
+      tags: *a18
     patch:
       operationId: OrderController_updateItems
       parameters:
@@ -1264,9 +1284,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderResponse"
-      security: *a14
+      security: *a17
       summary: Edit the items of a pending order
-      tags: *a15
+      tags: *a18
   /orders/{id}/status:
     patch:
       operationId: OrderController_updateStatus
@@ -1289,9 +1309,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderResponse"
-      security: *a14
+      security: *a17
       summary: Update an order's status
-      tags: *a15
+      tags: *a18
   /invoices:
     post:
       operationId: InvoiceController_create
@@ -1309,10 +1329,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvoiceResponse"
-      security: &a16
+      security: &a19
         - bearer: []
       summary: Create an invoice from existing orders
-      tags: &a17
+      tags: &a20
         - Invoices
     get:
       operationId: InvoiceController_list
@@ -1362,9 +1382,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedInvoiceResponse"
-      security: *a16
+      security: *a19
       summary: List invoices (paginated, searchable)
-      tags: *a17
+      tags: *a20
   /invoices/{id}:
     get:
       operationId: InvoiceController_getById
@@ -1381,9 +1401,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvoiceResponse"
-      security: *a16
+      security: *a19
       summary: Get an invoice by id
-      tags: *a17
+      tags: *a20
   /invoices/{id}/payment:
     patch:
       operationId: InvoiceController_recordPayment
@@ -1406,9 +1426,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvoiceResponse"
-      security: *a16
+      security: *a19
       summary: Record a payment against an invoice
-      tags: *a17
+      tags: *a20
   /invoices/{id}/send:
     post:
       operationId: InvoiceController_send
@@ -1431,9 +1451,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvoiceResponse"
-      security: *a16
+      security: *a19
       summary: Send an invoice to the customer
-      tags: *a17
+      tags: *a20
   /invoices/{id}/status:
     patch:
       operationId: InvoiceController_updateStatus
@@ -1456,9 +1476,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvoiceResponse"
-      security: *a16
+      security: *a19
       summary: Update an invoice's status
-      tags: *a17
+      tags: *a20
   /dashboard/summary:
     get:
       operationId: DashboardController_getSummary
@@ -1538,19 +1558,22 @@ components:
       type: http
       description: JWT access token from /auth sign-in.
   schemas:
-    CreateUserWithEmailDto:
+    CreatePasswordDto:
       type: object
       properties:
-        firstName:
+        userId:
           type: string
-          example: Ada
         email:
           type: string
-          example: ada@example.com
           format: email
+        newPassword:
+          type: string
+          minLength: 12
+          example: sup3r-Secret!pw
       required:
-        - firstName
+        - userId
         - email
+        - newPassword
     UserResponse:
       type: object
       properties:
@@ -1616,82 +1639,6 @@ components:
         - deleted
         - createdAt
         - updatedAt
-    CreateUserWithGoogleDto:
-      type: object
-      properties:
-        firstName:
-          type: string
-          example: Ada
-        lastName:
-          type: string
-          example: Lovelace
-        email:
-          type: string
-          example: ada@example.com
-          format: email
-        googleId:
-          type: string
-          example: google-oauth2|1234567890
-        avatarUrl:
-          type: string
-          example: https://example.com/a.png
-      required:
-        - firstName
-        - email
-        - googleId
-    GoogleLinkPreferencesDto:
-      type: object
-      properties:
-        firstName:
-          type: string
-          enum:
-            - keep
-            - update
-        lastName:
-          type: string
-          enum:
-            - keep
-            - update
-        avatarUrl:
-          type: string
-          enum:
-            - keep
-            - update
-    LinkGoogleAccountDto:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        googleId:
-          type: string
-        firstName:
-          type: string
-        lastName:
-          type: string
-        avatarUrl:
-          type: string
-        preferences:
-          $ref: "#/components/schemas/GoogleLinkPreferencesDto"
-      required:
-        - email
-        - googleId
-    CreatePasswordDto:
-      type: object
-      properties:
-        userId:
-          type: string
-        email:
-          type: string
-          format: email
-        newPassword:
-          type: string
-          minLength: 12
-          example: sup3r-Secret!pw
-      required:
-        - userId
-        - email
-        - newPassword
     UpdatePasswordDto:
       type: object
       properties:
@@ -1809,6 +1756,11 @@ components:
           example: avatar.png
         folder:
           type: string
+          enum:
+            - logos
+            - avatars
+            - resources
+            - uploads
           example: avatars
       required:
         - contentType
@@ -2518,6 +2470,24 @@ components:
           example: completed
       required:
         - status
+    ResourceUnitDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: carton
+        factor:
+          type: number
+          example: 24
+          description: How many base units one of this unit equals (>= 1).
+        price:
+          type: number
+          example: 45
+          description: Price for one of this unit.
+      required:
+        - name
+        - factor
+        - price
     CreateResourceDto:
       type: object
       properties:
@@ -2563,6 +2533,13 @@ components:
         lowStockThreshold:
           type: number
           example: 5
+        baseUnit:
+          type: string
+          example: piece
+        units:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceUnitDto"
         businessHours:
           type: object
           example:
@@ -2631,6 +2608,18 @@ components:
         lowStockThreshold:
           type: number
           example: 5
+        baseUnit:
+          type: object
+          nullable: true
+          example: piece
+        units:
+          example:
+            - name: carton
+              factor: 24
+              price: 45
+          type: array
+          items:
+            type: object
         businessHours:
           type: object
           nullable: true
@@ -2655,6 +2644,7 @@ components:
         - supportingImageKeys
         - availableQuantity
         - lowStockThreshold
+        - units
         - createdAt
         - updatedAt
     PaginatedResourceResponse:
@@ -2664,6 +2654,89 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ResourceResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+      required:
+        - data
+        - meta
+    CreateStockAdjustmentDto:
+      type: object
+      properties:
+        delta:
+          type: number
+          example: 20
+          description: "Signed change: positive adds stock, negative removes it. Must be
+            non-zero."
+        reason:
+          type: string
+          enum:
+            - restock
+            - correction
+            - manual
+          example: restock
+        note:
+          type: string
+          example: "Received shipment #4821"
+      required:
+        - delta
+        - reason
+    StockAdjustmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        businessId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        resourceId:
+          type: string
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+        delta:
+          type: number
+          example: 20
+          description: Signed change applied.
+        reason:
+          type: string
+          enum:
+            - opening_balance
+            - order
+            - order_cancel
+            - restock
+            - correction
+            - manual
+          example: restock
+        balanceAfter:
+          type: number
+          example: 120
+          description: Resulting stock after this change.
+        note:
+          type: object
+          nullable: true
+          example: Received shipment
+        createdBy:
+          type: object
+          nullable: true
+          example: 665f1b2c3d4e5f6a7b8c9d0e
+          description: User id that recorded the adjustment (null for system).
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - businessId
+        - resourceId
+        - delta
+        - reason
+        - balanceAfter
+        - createdAt
+    PaginatedStockAdjustmentResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockAdjustmentResponse"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
       required:
@@ -2708,6 +2781,13 @@ components:
         lowStockThreshold:
           type: number
           example: 5
+        baseUnit:
+          type: string
+          example: piece
+        units:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceUnitDto"
         businessHours:
           type: object
           example:
@@ -2723,6 +2803,10 @@ components:
         quantity:
           type: number
           example: 2
+        unit:
+          type: string
+          example: carton
+          description: A bulk unit defined on the product; defaults to the base unit.
       required:
         - resourceId
         - quantity
@@ -2760,6 +2844,14 @@ components:
         quantity:
           type: number
           example: 2
+        unit:
+          type: string
+          example: piece
+          description: The sell unit for this line.
+        unitFactor:
+          type: number
+          example: 1
+          description: Base units per one `unit` (stock moves by quantity * this).
         subTotal:
           type: number
           example: 19.98
@@ -2769,6 +2861,8 @@ components:
         - name
         - price
         - quantity
+        - unit
+        - unitFactor
         - subTotal
     OrderResponse:
       type: object
@@ -3057,8 +3151,10 @@ components:
         email:
           type: string
           example: ada@example.com
+          description: Must match the invoice's customer email.
         message:
           type: string
+          maxLength: 2000
           example: Thanks for your business — payment is due in 14 days.
     UpdateInvoiceStatusDto:
       type: object
