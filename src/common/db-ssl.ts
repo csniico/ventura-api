@@ -38,10 +38,36 @@ export function postgresSslOptions(
   return { rejectUnauthorized, ...(ca ? { ca } : {}) }
 }
 
-/** Accept the CA inline (PEM) or as a path to a certificate file. */
+/**
+ * Accept the CA inline (PEM) or as a path to a certificate file.
+ *
+ * A malformed value is a startup failure either way, so fail with a message
+ * that says which of the two forms was attempted and why it did not work —
+ * a bare ENOENT for what the operator believed was a certificate is a
+ * genuinely confusing way to lose a deploy.
+ */
 function readCa(env: NodeJS.ProcessEnv): string | undefined {
   const value = env.PG_SSL_CA?.trim()
   if (!value) return undefined
   if (value.includes('BEGIN CERTIFICATE')) return value
-  return readFileSync(value, 'utf8')
+
+  if (value.includes('\n') || value.length > 1024) {
+    throw new Error(
+      'PG_SSL_CA looks like certificate data but has no "BEGIN CERTIFICATE" ' +
+        'header. Supply the full PEM block, or a path to a .pem file. ' +
+        'Most managed providers (Neon included) use publicly-trusted ' +
+        'certificates and need no CA at all — leaving PG_SSL_CA unset is fine.',
+    )
+  }
+
+  try {
+    return readFileSync(value, 'utf8')
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    throw new Error(
+      `PG_SSL_CA was read as a file path and could not be opened: ${reason}. ` +
+        'Supply an inline PEM block instead, or unset it — most managed ' +
+        'providers use publicly-trusted certificates and need no CA.',
+    )
+  }
 }
