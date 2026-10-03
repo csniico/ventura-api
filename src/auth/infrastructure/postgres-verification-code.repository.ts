@@ -22,6 +22,7 @@ export class PostgresVerificationCodeRepository
       email: entity.email,
       code: entity.code,
       expiresAt: entity.expiresAt,
+      attempts: entity.attempts,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }
@@ -42,6 +43,21 @@ export class PostgresVerificationCodeRepository
       code,
     })
     return record ? this.toDomain(record) : null
+  }
+
+  async findByEmail(email: string): Promise<IVerificationCode | null> {
+    const record = await this.em.findOne(PostgresVerificationCodeEntity, {
+      email,
+    })
+    return record ? this.toDomain(record) : null
+  }
+
+  async incrementAttempts(id: string): Promise<number> {
+    const record = await this.em.findOne(PostgresVerificationCodeEntity, { id })
+    if (!record) return 0
+    record.attempts += 1
+    await this.em.flush()
+    return record.attempts
   }
 
   async deleteByEmail(email: string): Promise<void> {

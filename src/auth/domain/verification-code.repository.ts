@@ -18,6 +18,13 @@ export interface VerificationCodeRepository {
     email: string,
     code: string,
   ): Promise<IVerificationCode | null>
+  /**
+   * The active code for an email, or null. Looked up by email alone so a wrong
+   * guess can still be counted against it.
+   */
+  findByEmail(email: string): Promise<IVerificationCode | null>
+  /** Record a failed guess; returns the new attempt count. */
+  incrementAttempts(id: string): Promise<number>
   /** Remove every code for an email (replace-before-issue and consume-on-use). */
   deleteByEmail(email: string): Promise<void>
 }

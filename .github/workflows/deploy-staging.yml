@@ -13,6 +13,7 @@ jobs:
     # To clone this workflow for another environment, change only:
     #   1. the branch under `on.push.branches` above
     #   2. RENDER_SERVICE_ID below (the per-environment Render service secret)
+    #   3. the *_BASE_URL repo variable the post-deploy smoke test probes
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -47,6 +48,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trigger Render deploy
+        id: deploy
         env:
           IMAGE: docker.io/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.sha.outputs.short }}
         run: |
@@ -65,3 +67,45 @@ jobs:
             echo "Render deploy failed" >&2
             exit 1
           fi
+          echo "id=$(jq -r '.id' <<<"$body")" >> "$GITHUB_OUTPUT"
+
+      # The POST above only queues the deploy. Without waiting, the smoke test
+      # below would probe the OLD build and pass while the new one is still
+      # rolling out -- which is exactly the blind spot that let staging drift.
+      - name: Wait for the deploy to go live
+        env:
+          DEPLOY_ID: ${{ steps.deploy.outputs.id }}
+        timeout-minutes: 20
+        run: |
+          while true; do
+            state=$(curl --silent --show-error \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${DEPLOY_ID}" \
+              --header "Authorization: Bearer ${RENDER_API_KEY}" | jq -r '.status')
+            echo "deploy status: ${state}"
+            case "$state" in
+              live) break ;;
+              build_failed|update_failed|canceled|pre_deploy_failed)
+                echo "Render deploy ended in '${state}'" >&2; exit 1 ;;
+            esac
+            sleep 15
+          done
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Probes the DEPLOYED artefact for the security-assessment findings.
+      # Source-level tests cannot catch a stale image; this can. A non-zero
+      # exit fails the workflow so the regression is visible immediately.
+      - name: Verify auth on the deployed build
+        env:
+          BASE_URL: ${{ vars.STAGING_BASE_URL }}
+        run: pnpm smoke:auth

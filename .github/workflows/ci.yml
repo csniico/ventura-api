@@ -1,0 +1,47 @@
+name: CI
+
+# Gate on every PR into a deployable branch, and on direct pushes to them.
+# Before this existed nothing ran tests outside a developer's machine, so a
+# regression only showed up once it was already deployed.
+on:
+  pull_request:
+    branches: [dev, staging, prod]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and format check
+        run: pnpm exec biome ci ./src ./test
+
+      - name: Typecheck
+        run: pnpm test:typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

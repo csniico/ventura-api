@@ -328,6 +328,14 @@ export class UserServiceV2 {
 
   /**
    * Link a Google account to an existing user (found by email).
+   *
+   * SECURITY: not exposed over HTTP. It trusts the caller to have already
+   * proven ownership of the Google identity, because it attaches `googleId`
+   * and forces `isEmailVerified: true` keyed only on an email address. Call it
+   * only after verifying a Google ID token (as `AuthService.signInWithGoogle`
+   * does) or from an authenticated, self-asserted context. Exposing it as a
+   * public route was SEC-002 — a one-request account takeover.
+   *
    * - googleId is always attached.
    * - firstName / lastName / avatarUrl are applied unless the matching
    *   preference is `keep`. Any field not listed defaults to `update`.
@@ -476,7 +484,7 @@ export class UserServiceV2 {
       return
     }
     try {
-      await this.fileStorageService.deleteFile(oldKey)
+      await this.fileStorageService.deleteFileInternal(oldKey)
     } catch (error) {
       this.logger.error(`Failed to delete old asset ${oldKey}`, error)
     }

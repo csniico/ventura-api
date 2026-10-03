@@ -3,15 +3,23 @@
  * Kept intentionally minimal and inline-styled for broad client support.
  */
 
+import { escapeHtml, escapeHtmlMultiline } from './escape-html'
+
 export interface EmailContent {
   subject: string
   html: string
 }
 
+/**
+ * Wrap a body in the shared shell. `title` is plain text and is escaped here,
+ * so callers can interpolate user-supplied names into it freely. `body` is
+ * already-composed HTML — anything user-supplied inside it must be escaped by
+ * the caller (see `escapeHtml` / `escapeHtmlMultiline`).
+ */
 function layout(title: string, body: string): string {
   return `
   <div style="font-family: Arial, Helvetica, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
-    <h1 style="font-size: 20px; margin: 0 0 16px;">${title}</h1>
+    <h1 style="font-size: 20px; margin: 0 0 16px;">${escapeHtml(title)}</h1>
     ${body}
     <p style="font-size: 12px; color: #888; margin-top: 32px;">— The Ventura Team</p>
   </div>`
@@ -105,13 +113,13 @@ export function invoiceEmail(args: {
   const name = args.customerName?.trim() ? args.customerName.trim() : 'there'
   const total = args.totalAmount.toFixed(2)
   const custom = args.message?.trim()
-    ? `<p style="font-size: 14px;">${args.message.trim()}</p>`
+    ? `<p style="font-size: 14px;">${escapeHtmlMultiline(args.message.trim())}</p>`
     : ''
   return {
     subject: `Invoice ${args.invoiceNumber} from Ventura`,
     html: layout(
       `Hi ${name}`,
-      `<p style="font-size: 14px;">Please find the details for invoice <strong>${args.invoiceNumber}</strong> below.</p>
+      `<p style="font-size: 14px;">Please find the details for invoice <strong>${escapeHtml(args.invoiceNumber)}</strong> below.</p>
        <p style="font-size: 14px;">Total amount due: <strong>GHS ${total}</strong></p>
        ${custom}
        <p style="font-size: 13px; color: #666;">Thank you for your business.</p>`,

@@ -34,6 +34,35 @@ You build with cloud-native scalability, portability, and zero-downtime environm
 11. **Logs:** Treat logs as continuous, unbuffered event streams. Write exclusively to `stdout`/`stderr` and let the execution environment handle routing and aggregation.
 12. **Admin Processes:** Run administrative or maintenance tasks (database migrations, one-off scripts) as short-lived, transient processes against identical releases and environments.
 
+# Authentication & Authorization (non-negotiable)
+
+Authentication is **fail-closed**. `JwtAuthGuard` is registered as a global
+`APP_GUARD` in `app.module.ts`, so every route requires a bearer access token
+by default. A controller that forgets a guard is protected, not exposed — the
+failure mode that put `/files/presign` and `DELETE /files` on the open internet.
+
+- To make a route reachable without a token, mark it `@Public()`
+  (`src/auth/decorators/public.decorator.ts`) and **add it to the expected list
+  in `src/auth/guards/public-routes.spec.ts`**. That test fails on any
+  unreviewed public route, which is the whole point: going public is a
+  deliberate, reviewed edit.
+- Before marking anything public, be sure the handler cannot read or mutate
+  data belonging to an identifiable account on an unauthenticated caller's
+  say-so. A route that returns an existing record when given only an email is
+  an enumeration oracle; one that writes to an account identified only by email
+  is an account-takeover path.
+- Authentication is not authorization. A valid token says *who* is calling, not
+  *what* they may touch. Every route taking an `:id`, a `userId`, or any other
+  caller-supplied identifier must verify ownership server-side — see
+  `UserControllerV2.assertSelf`, `BusinessService.getByIdForOwner`, and the
+  `resolveBusinessId(req)` pattern used by the tenant-scoped controllers. Never
+  trust an id from the request body or path on its own.
+- Prefer `NotFoundException` over `ForbiddenException` when refusing access to
+  a record the caller does not own, so the route cannot be used to probe which
+  ids exist.
+- Validate id params with `ParseUUIDPipe`. An unvalidated id reaches Postgres
+  and surfaces as a 500 with driver text in it.
+
 # Response & Execution Guidelines
 - **Be Straight to the Point:** Omit conversational fluff, repetitive explanations, and meta-introductions. Lead directly with the architecture, concrete reasoning, and structural code examples.
 - **Provide Contextual Validation:** When generating code or layouts, briefly state *why* a specific pattern or 12-factor principle is applied here and *what* it protects the codebase from (e.g., "Applying Strategy here to allow mocking of third-party APIs during testing").

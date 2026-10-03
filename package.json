@@ -29,7 +29,8 @@
     "migration:down": "mikro-orm migration:down",
     "migrate:data": "tsx scripts/migrate-mongo-to-pg.ts",
     "migrate:data:dry": "tsx scripts/migrate-mongo-to-pg.ts --dry-run",
-    "seed:test": "tsx scripts/seed-test-accounts.ts"
+    "seed:test": "tsx scripts/seed-test-accounts.ts",
+    "smoke:auth": "tsx scripts/smoke-auth.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1065.0",
@@ -54,6 +55,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "google-auth-library": "^10.7.0",
+    "helmet": "^8.3.0",
     "mongodb": "^7.5.0",
     "nanoid": "^5.1.11",
     "passport": "^0.7.0",
@@ -102,11 +104,7 @@
     }
   },
   "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
+    "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
@@ -132,12 +130,8 @@
         }
       ]
     },
-    "transformIgnorePatterns": [
-      "node_modules/.pnpm/(?!nanoid)"
-    ],
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
+    "transformIgnorePatterns": ["node_modules/.pnpm/(?!nanoid)"],
+    "collectCoverageFrom": ["**/*.(t|j)s"],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

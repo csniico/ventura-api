@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ConflictException,
   Inject,
@@ -116,7 +116,7 @@ export class ResourceService {
   /** Best-effort cleanup of a replaced S3 object. Never throws. */
   private async deleteObject(key: string): Promise<void> {
     try {
-      await this.fileStorageService.deleteFile(key)
+      await this.fileStorageService.deleteFileInternal(key)
     } catch (error) {
       this.logger.error(`Failed to delete old image ${key}`, error)
     }

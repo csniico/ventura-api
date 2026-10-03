@@ -20,6 +20,13 @@ import { AuthResult, AuthTokens, JwtPayload } from './types/auth.types'
 
 const CODE_TTL_MINUTES = 10
 
+/**
+ * Wrong guesses allowed against a single sign-in code before it is discarded.
+ * 5 of a 10^6 code space is a negligible chance of a lucky hit, and is far
+ * more attempts than a real user mistyping a 6-digit code needs.
+ */
+const MAX_CODE_ATTEMPTS = 5
+
 // The `ms`-style duration string @nestjs/jwt expects for expiresIn.
 type ExpiresIn =
   | number
@@ -143,12 +150,33 @@ export class AuthService {
   /**
    * Verify an emailed code and sign the user in. Issues tokens, marks the email
    * verified, sends a welcome email on first verification, and consumes the code.
-   * Throws 400 if the code is missing, expired, or wrong.
+   * Throws 400 if the code is missing, expired, wrong, or locked out.
+   *
+   * The code is looked up by email first so a wrong guess can be counted
+   * against it. After {@link MAX_CODE_ATTEMPTS} failures the code is discarded
+   * and the user must request a new one. Without this, the only limit on
+   * guessing a 6-digit code was a per-IP throttle, which a rotating-IP attacker
+   * walks straight past (SEC-006). Every failure returns the same message, so
+   * "wrong code" and "locked out" are indistinguishable.
    */
   async verifyEmailCode(email: string, code: string): Promise<AuthResult> {
-    const record = await this.codeRepository.findByEmailAndCode(email, code)
+    const record = await this.codeRepository.findByEmail(email)
 
     if (!record || record.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('Invalid or expired code.')
+    }
+
+    if (record.attempts >= MAX_CODE_ATTEMPTS) {
+      // Burn it so a locked code cannot be guessed at for the rest of its TTL.
+      await this.codeRepository.deleteByEmail(email)
+      throw new BadRequestException('Invalid or expired code.')
+    }
+
+    if (record.code !== code) {
+      const attempts = await this.codeRepository.incrementAttempts(record.id)
+      if (attempts >= MAX_CODE_ATTEMPTS) {
+        await this.codeRepository.deleteByEmail(email)
+      }
       throw new BadRequestException('Invalid or expired code.')
     }
 

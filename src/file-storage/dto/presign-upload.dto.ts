@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator'
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import { UploadFolder } from '../file-storage.constants'
 
 /** Request a presigned upload URL for a file the client will PUT directly to S3. */
 export class PresignUploadDto {
@@ -15,10 +16,11 @@ export class PresignUploadDto {
   @IsNotEmpty()
   filename!: string
 
-  // Optional folder/prefix (e.g. "avatars", "logos"). Letters, numbers, - and _.
-  @ApiProperty({ required: false, example: 'avatars' })
+  // Destination folder. Closed set — an arbitrary prefix would let a caller
+  // write anywhere in the bucket. The caller's owner scope is appended
+  // server-side, so this alone does not determine the final key.
+  @ApiProperty({ required: false, enum: UploadFolder, example: 'avatars' })
   @IsOptional()
-  @IsString()
-  @Matches(/^[a-zA-Z0-9_-]+$/)
-  folder?: string
+  @IsEnum(UploadFolder)
+  folder?: UploadFolder
 }

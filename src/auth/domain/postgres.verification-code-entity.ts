@@ -16,6 +16,13 @@ export const PostgresVerificationCodeEntity = defineEntity({
     email: p.string(),
     code: p.string(),
     expiresAt: p.datetime(),
+    /**
+     * Failed verification attempts against this code. The per-IP throttle does
+     * not bound guessing from rotating addresses, so the counter is kept on
+     * the code itself and the account is locked out once it is exhausted
+     * (SEC-006).
+     */
+    attempts: p.integer().default(0),
     createdAt: p
       .datetime()
       .defaultRaw('now()')

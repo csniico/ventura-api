@@ -244,6 +244,55 @@ describe('AuthService', () => {
         auth.verifyEmailCode(email, record!.code),
       ).rejects.toBeInstanceOf(BadRequestException)
     })
+
+    it('locks the code out after 5 wrong guesses, even with the right code', async () => {
+      const email = 'bruteforce@example.com'
+      await auth.requestEmailCode(email)
+      const correct = codeFor(email)!.code
+
+      // The per-IP throttle does not stop a rotating-IP attacker, so the limit
+      // has to live on the code itself (SEC-006).
+      for (let i = 0; i < 5; i++) {
+        await expect(
+          auth.verifyEmailCode(email, '000000'),
+        ).rejects.toBeInstanceOf(BadRequestException)
+      }
+
+      // The code is gone, so even the correct value no longer works.
+      expect(codeCount(email)).toBe(0)
+      await expect(auth.verifyEmailCode(email, correct)).rejects.toBeInstanceOf(
+        BadRequestException,
+      )
+    })
+
+    it('a wrong guess does not invalidate the code before the limit', async () => {
+      const email = 'onetypo@example.com'
+      await auth.requestEmailCode(email)
+      const correct = codeFor(email)!.code
+
+      await expect(
+        auth.verifyEmailCode(email, '000000'),
+      ).rejects.toBeInstanceOf(BadRequestException)
+
+      const result = await auth.verifyEmailCode(email, correct)
+      expect(result.accessToken).toBeTruthy()
+    })
+
+    it('requesting a new code resets the attempt counter', async () => {
+      const email = 'reset@example.com'
+      await auth.requestEmailCode(email)
+      for (let i = 0; i < 4; i++) {
+        await expect(
+          auth.verifyEmailCode(email, '000000'),
+        ).rejects.toBeInstanceOf(BadRequestException)
+      }
+
+      await auth.requestEmailCode(email)
+      expect(codeFor(email)!.attempts).toBe(0)
+
+      const result = await auth.verifyEmailCode(email, codeFor(email)!.code)
+      expect(result.accessToken).toBeTruthy()
+    })
   })
 
   describe('google sign-in', () => {

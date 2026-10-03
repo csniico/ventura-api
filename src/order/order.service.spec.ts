@@ -54,7 +54,9 @@ describe('OrderService (behavioural, fake repositories)', () => {
         ...fakeResources.providers,
         {
           provide: FileStorageService,
-          useValue: { deleteFile: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            deleteFileInternal: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile()

@@ -11,7 +11,9 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { AppointmentModule } from './appointment/appointment.module'
 import { AuthModule } from './auth/auth.module'
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard'
 import { BusinessModule } from './business/business.module'
+import { postgresSslOptions } from './common/db-ssl'
 import { LoggerMiddleware } from './common/middleware/logger.middleware'
 import { CustomerModule } from './customer/customer.module'
 import { DashboardModule } from './dashboard/dashboard.module'
@@ -54,9 +56,7 @@ import { UserModule } from './user/user.module'
           driver: PostgreSqlDriver,
           clientUrl: clientUri,
           driverOptions: {
-            ssl: {
-              rejectUnauthorized: false,
-            },
+            ssl: postgresSslOptions(),
           },
           autoLoadEntities: true,
           schema: 'public',
@@ -80,7 +80,14 @@ import { UserModule } from './user/user.module'
     SetupModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Fail-closed authentication: every route requires a bearer token unless
+    // it is explicitly marked `@Public()`. Runs after the throttler so an
+    // unauthenticated flood is still rate-limited.
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

@@ -196,10 +196,14 @@ export class InvoiceService {
   }
 
   /**
-   * Email the invoice to the customer. Recipient is dto.email when provided,
-   * otherwise the invoice's customer email; one of them must exist. Cancelled
-   * invoices cannot be sent. Records sentAt and promotes a DRAFT to SENT without
-   * downgrading an already-paid invoice.
+   * Email the invoice to its customer. Cancelled invoices cannot be sent.
+   * Records sentAt and promotes a DRAFT to SENT without downgrading an
+   * already-paid invoice.
+   *
+   * `dto.email` may only re-state the invoice's own customer email. An
+   * unrestricted override turned this into a way to send Ventura-branded mail,
+   * with attacker-chosen content, to any address (SEC-005). Changing where an
+   * invoice goes is an edit to the invoice, not a parameter of sending it.
    */
   async send(
     businessId: string,
@@ -212,9 +216,18 @@ export class InvoiceService {
       throw new BadRequestException('Cannot send a cancelled invoice.')
     }
 
-    const recipient = dto.email ?? invoice.customerEmail
+    const recipient = invoice.customerEmail
     if (!recipient) {
       throw new BadRequestException('No recipient email for this invoice.')
+    }
+    if (
+      dto.email &&
+      dto.email.trim().toLowerCase() !== recipient.trim().toLowerCase()
+    ) {
+      throw new BadRequestException(
+        "An invoice can only be sent to its customer's email address. " +
+          'Update the invoice to change the recipient.',
+      )
     }
 
     await this.mailService.sendInvoice(recipient, {

@@ -1,4 +1,4 @@
-import {
+﻿import {
   ForbiddenException,
   Inject,
   Injectable,
@@ -69,6 +69,25 @@ export class BusinessService {
     return business
   }
 
+  /**
+   * Get a business by id, but only if the caller owns it.
+   *
+   * Business ids travel widely (they are returned on customers, orders and
+   * invoices), so an id is not a secret and must not be sufficient to read a
+   * record. Answers NotFound rather than Forbidden for a business owned by
+   * someone else, so the route cannot be used to probe which ids exist.
+   */
+  async getByIdForOwner(
+    businessId: string,
+    ownerId: string,
+  ): Promise<IBusiness> {
+    const business = await this.getById(businessId)
+    if (business.ownerId !== ownerId) {
+      throw new NotFoundException('Business not found.')
+    }
+    return business
+  }
+
   /** Get the business owned by a given user (or null if none). */
   async getByOwner(ownerId: string): Promise<IBusiness | null> {
     return await this.businessRepository.findByOwner(ownerId)
@@ -95,7 +114,7 @@ export class BusinessService {
     // If the logo changed, clean up the previous object (best-effort).
     if (dto.logoKey !== undefined && oldLogoKey && oldLogoKey !== dto.logoKey) {
       try {
-        await this.fileStorageService.deleteFile(oldLogoKey)
+        await this.fileStorageService.deleteFileInternal(oldLogoKey)
       } catch (error) {
         this.logger.error(`Failed to delete old logo ${oldLogoKey}`, error)
       }

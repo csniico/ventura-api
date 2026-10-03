@@ -1,11 +1,11 @@
-import type { RunContext } from './context';
-import { request, expectOk } from './client';
-import { Db } from './db';
+import { expectOk, request } from './client'
+import type { RunContext } from './context'
+import { Db } from './db'
 
 interface AuthResult {
-  accessToken: string;
-  refreshToken: string;
-  user: { _id: string; email: string; businessId?: string | null };
+  accessToken: string
+  refreshToken: string
+  user: { _id: string; email: string; businessId?: string | null }
 }
 
 /**
@@ -14,25 +14,31 @@ interface AuthResult {
  * code), verifies it, and stores the tokens + user id on the context.
  */
 export async function emailCodeLogin(ctx: RunContext, db: Db): Promise<void> {
-  const email = ctx.email;
+  const email = ctx.email
 
   expectOk(
-    await request(ctx, 'onboarding', 'request email code', '/auth/sign-in-email', {
-      method: 'POST',
-      body: { email },
-      auth: false,
-    }),
+    await request(
+      ctx,
+      'onboarding',
+      'request email code',
+      '/auth/sign-in-email',
+      {
+        method: 'POST',
+        body: { email },
+        auth: false,
+      },
+    ),
     'request email code',
-  );
+  )
 
   // The API writes the code synchronously before responding; retry briefly just
   // in case of replication/commit lag.
-  let code: string | null = null;
+  let code: string | null = null
   for (let attempt = 0; attempt < 10 && !code; attempt++) {
-    code = await db.readLatestCode(email);
-    if (!code) await Bun.sleep(150);
+    code = await db.readLatestCode(email)
+    if (!code) await Bun.sleep(150)
   }
-  if (!code) throw new Error(`No verification code found in DB for ${email}`);
+  if (!code) throw new Error(`No verification code found in DB for ${email}`)
 
   const auth = expectOk<AuthResult>(
     await request(ctx, 'onboarding', 'verify code', '/auth/verify-code', {
@@ -41,52 +47,61 @@ export async function emailCodeLogin(ctx: RunContext, db: Db): Promise<void> {
       auth: false,
     }),
     'verify code',
-  );
+  )
 
-  ctx.token = auth.accessToken;
-  ctx.refreshToken = auth.refreshToken;
-  ctx.userId = auth.user._id;
+  ctx.token = auth.accessToken
+  ctx.refreshToken = auth.refreshToken
+  ctx.userId = auth.user._id
 }
 
 /**
- * Alternative: email + password. Creates the user, sets a password, and signs
- * in. Not used by the default run but kept for completeness / parity.
+ * Alternative: email + password. Not used by the default run but kept for
+ * parity.
+ *
+ * Account creation and setting a password are no longer reachable without a
+ * token, so this bootstraps through the passwordless flow first, sets the
+ * password as the authenticated user, then signs in with it.
  */
 export async function emailPasswordLogin(
   ctx: RunContext,
-  password = 'Sup3r-Secret!pw',
+  db: Db,
+  password = process.env.AUTOMATION_PASSWORD,
 ): Promise<void> {
-  const email = ctx.email;
+  if (!password) {
+    throw new Error(
+      'AUTOMATION_PASSWORD is not set. Export a throwaway password (>= 12 chars) to use the password login path.',
+    )
+  }
 
-  const user = expectOk<{ _id: string }>(
-    await request(ctx, 'onboarding', 'create user', '/users/email', {
-      method: 'POST',
-      body: { firstName: 'Automation', email },
-      auth: false,
-    }),
-    'create user',
-  );
-  ctx.userId = user._id;
+  const email = ctx.email
+
+  // Creates the account if it does not exist and leaves us authenticated.
+  await emailCodeLogin(ctx, db)
 
   expectOk(
     await request(ctx, 'onboarding', 'set password', '/users/password', {
       method: 'POST',
-      body: { userId: user._id, email, newPassword: password },
-      auth: false,
+      body: { userId: ctx.userId, email, newPassword: password },
     }),
     'set password',
-  );
+  )
 
   const auth = expectOk<AuthResult>(
-    await request(ctx, 'onboarding', 'sign in (password)', '/auth/sign-in-password', {
-      method: 'POST',
-      body: { email, password },
-      auth: false,
-    }),
+    await request(
+      ctx,
+      'onboarding',
+      'sign in (password)',
+      '/auth/sign-in-password',
+      {
+        method: 'POST',
+        body: { email, password },
+        auth: false,
+      },
+    ),
     'sign in (password)',
-  );
-  ctx.token = auth.accessToken;
-  ctx.refreshToken = auth.refreshToken;
+  )
+  ctx.token = auth.accessToken
+  ctx.refreshToken = auth.refreshToken
 }
 
 /**
@@ -104,7 +119,7 @@ export async function ensureBusiness(ctx: RunContext): Promise<void> {
       },
     }),
     'create business',
-  );
-  ctx.businessId = biz._id;
-  ctx.ids.businessId = biz._id;
+  )
+  ctx.businessId = biz._id
+  ctx.ids.businessId = biz._id
 }

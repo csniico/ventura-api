@@ -1,5 +1,5 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs'
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { FileStorageModule } from '../file-storage/file-storage.module'
 import { MailModule } from '../mail/mail.module'
 import { UserControllerV2 } from './application/user.controller'
@@ -13,7 +13,7 @@ import { PostgresUserRepository } from './infrastructure/postgres-user.repositor
 
 @Module({
   imports: [
-    FileStorageModule,
+    forwardRef(() => FileStorageModule),
     MailModule,
     MikroOrmModule.forFeature([PostgresUserEntity, PostgresEmailChangeEntity]),
   ],
